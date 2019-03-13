@@ -234,5 +234,92 @@ private:
   const int error_number_;
 };
 
+
+
+
+namespace ProxyProtocol
+{
+//Readme: https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+
+enum AddrType
+{
+    AddrType_ipv4 = 1,
+    AddrType_ipv6 = 2,
+    AddrType_unix = 3,
+};
+
+
+
+#define PP2_TYPE_NETNS 0x30
+
+#pragma pack(1)
+
+
+struct pp2_tlv {
+    uint8_t type;
+    uint16_t length;
+    uint8_t value[16];
+} ;	
+
+
+struct proxy_protocol_data
+{
+    uint8_t sig[12];
+    uint8_t ver_cmd;
+    uint8_t fam;
+    uint16_t len;
+
+	union {
+		struct {  /* for TCP/UDP over IPv4, len = 12 */
+			uint32_t src_addr;
+			uint32_t dst_addr;
+			uint16_t src_port;
+			uint16_t dst_port;
+		} ip4;
+		struct {  /* for TCP/UDP over IPv6, len = 36 */
+			uint8_t  src_addr[16];
+			uint8_t  dst_addr[16];
+			uint16_t src_port;
+			uint16_t dst_port;
+		} ip6;
+		struct {  /* for AF_UNIX sockets, len = 216 */
+			uint8_t src_addr[108];
+			uint8_t dst_addr[108];
+		} unix;
+	} addr;  
+
+	struct pp2_tlv tlv; 
+
+    //// extra info
+    uint16_t length;  //little edian
+    bool dest_is_local;    //
+
+    proxy_protocol_data()
+    {
+        memcpy(sig,"\x0d\x0a\x0d\x0a\x00\x0d\x0a\x51\x55\x49\x54\x0a",12);
+        //using PROXY
+        ver_cmd = 0x21;
+
+        length = 0;
+        dest_is_local = false;
+    }
+
+    int size()
+    {
+        return length + 16;
+    }
+
+};
+
+#pragma pack()
+
+typedef std::shared_ptr<proxy_protocol_data> ProxyProtocolDataSharedPtr;
+
+
+
+}
+
+
+
 } // namespace Network
 } // namespace Envoy

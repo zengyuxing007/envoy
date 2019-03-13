@@ -133,6 +133,7 @@ protected:
 
   TransportSocketPtr transport_socket_;
   ConnectionSocketPtr socket_;
+  //// 连接管理器下都有一个FilterManager ---
   FilterManagerImpl filter_manager_;
   StreamInfo::StreamInfoImpl stream_info_;
 

@@ -232,6 +232,8 @@ void ConnectionManagerImpl::doDeferredStreamDestroy(ActiveStream& stream) {
   read_callbacks_->connection().dispatcher().deferredDelete(stream.removeFromList(streams_));
 }
 
+//// Http Conn manager --- newStream
+//// 解码-编码
 StreamDecoder& ConnectionManagerImpl::newStream(StreamEncoder& response_encoder,
                                                 bool is_internally_created) {
   if (connection_idle_timer_) {
@@ -252,6 +254,7 @@ StreamDecoder& ConnectionManagerImpl::newStream(StreamEncoder& response_encoder,
   return **streams_.begin();
 }
 
+/// 处理HTTP request 包
 Network::FilterStatus ConnectionManagerImpl::onData(Buffer::Instance& data, bool) {
   if (!codec_) {
     codec_ = config_.createCodec(read_callbacks_->connection(), data, *this);
@@ -268,6 +271,7 @@ Network::FilterStatus ConnectionManagerImpl::onData(Buffer::Instance& data, bool
   do {
     redispatch = false;
 
+    //// HTTP codec 处理
     try {
       codec_->dispatch(data);
     } catch (const CodecProtocolException& e) {
@@ -567,6 +571,8 @@ const Network::Connection* ConnectionManagerImpl::ActiveStream::connection() {
 //
 // TODO(alyssawilk) all the calls here should be audited for order priority,
 // e.g. many early returns do not currently handle connection: close properly.
+//
+// http 头解析
 void ConnectionManagerImpl::ActiveStream::decodeHeaders(HeaderMapPtr&& headers, bool end_stream) {
   request_headers_ = std::move(headers);
   if (Http::Headers::get().MethodValues.Head == request_headers_->Method()->value().c_str()) {
@@ -721,6 +727,7 @@ void ConnectionManagerImpl::ActiveStream::decodeHeaders(HeaderMapPtr&& headers, 
     traceRequest();
   }
 
+  //// jumper to router --
   decodeHeaders(nullptr, *request_headers_, end_stream);
 
   // Reset it here for both global and overridden cases.
@@ -779,6 +786,7 @@ void ConnectionManagerImpl::ActiveStream::traceRequest() {
   }
 }
 
+/// 解码filter 
 void ConnectionManagerImpl::ActiveStream::decodeHeaders(ActiveStreamDecoderFilter* filter,
                                                         HeaderMap& headers, bool end_stream) {
   std::list<ActiveStreamDecoderFilterPtr>::iterator entry;

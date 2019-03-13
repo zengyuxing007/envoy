@@ -234,6 +234,9 @@ void ConnectionImpl::noDelay(bool enable) {
 
 uint64_t ConnectionImpl::id() const { return id_; }
 
+//// 读完数据,开始处理了
+//
+///
 void ConnectionImpl::onRead(uint64_t read_buffer_size) {
   if (!read_enabled_) {
     return;
@@ -474,6 +477,7 @@ void ConnectionImpl::onFileEvent(uint32_t events) {
   }
 }
 
+///// 读事件到来,开始读数据--- 一般调用RawBufferSocket::Read 读取数据
 void ConnectionImpl::onReadReady() {
   ENVOY_CONN_LOG(trace, "read ready", *this);
 
@@ -630,6 +634,10 @@ ClientConnectionImpl::ClientConnectionImpl(
 
         // Trigger a write event to close this connection out-of-band.
         file_event_->activate(Event::FileReadyType::Write);
+      }
+      else{
+          ENVOY_LOG_MISC(debug,"Bind success to {}",source_to_use->asString());
+
       }
     }
   }

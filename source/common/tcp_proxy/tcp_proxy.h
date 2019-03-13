@@ -107,6 +107,7 @@ public:
   const TcpProxyStats& stats() { return shared_config_->stats(); }
   const std::vector<AccessLog::InstanceSharedPtr>& accessLogs() { return access_logs_; }
   uint32_t maxConnectAttempts() const { return max_connect_attempts_; }
+  bool isSendProxyProtocol() const { return is_send_proxy_protocol_; }
   const absl::optional<std::chrono::milliseconds>& idleTimeout() {
     return shared_config_->idleTimeout();
   }
@@ -147,6 +148,7 @@ private:
   uint64_t total_cluster_weight_;
   std::vector<AccessLog::InstanceSharedPtr> access_logs_;
   const uint32_t max_connect_attempts_;
+  bool is_send_proxy_protocol_;
   ThreadLocal::SlotPtr upstream_drain_manager_slot_;
   SharedConfigSharedPtr shared_config_;
   std::unique_ptr<const Router::MetadataMatchCriteria> cluster_metadata_match_criteria_;

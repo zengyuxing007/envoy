@@ -253,6 +253,7 @@ void Filter::chargeUpstreamCode(Http::Code code,
   chargeUpstreamCode(response_status_code, fake_response_headers, upstream_host, dropped);
 }
 
+///
 Http::FilterHeadersStatus Filter::decodeHeaders(Http::HeaderMap& headers, bool end_stream) {
   // Do a common header check. We make sure that all outgoing requests have all HTTP/2 headers.
   // These get stripped by HTTP/1 codec where applicable.
@@ -299,6 +300,8 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::HeaderMap& headers, bool e
         absl::nullopt);
     return Http::FilterHeadersStatus::StopIteration;
   }
+
+  //// 路由判断---
 
   // A route entry matches for the request.
   route_entry_ = route_->routeEntry();

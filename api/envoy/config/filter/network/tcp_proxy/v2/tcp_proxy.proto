@@ -52,6 +52,8 @@ message TcpProxy {
     WeightedCluster weighted_clusters = 10;
   }
 
+  bool send_proxy_protocol = 11;
+
   // Optional endpoint metadata match criteria. Only endpoints in the upstream
   // cluster with metadata matching that set in metadata_match will be
   // considered. The filter name should be specified as *envoy.lb*.

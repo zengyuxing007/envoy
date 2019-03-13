@@ -428,6 +428,7 @@ private:
     HeaderMapPtr request_headers_;
     Buffer::WatermarkBufferPtr buffered_request_data_;
     HeaderMapPtr request_trailers_;
+    /// reader & writer
     std::list<ActiveStreamDecoderFilterPtr> decoder_filters_;
     std::list<ActiveStreamEncoderFilterPtr> encoder_filters_;
     std::list<AccessLog::InstanceSharedPtr> access_log_handlers_;

@@ -296,7 +296,9 @@ public:
   allocateTcpConnPool(Event::Dispatcher& dispatcher, HostConstSharedPtr host,
                       ResourcePriority priority,
                       const Network::ConnectionSocket::OptionsSharedPtr& options,
-                      Network::TransportSocketOptionsSharedPtr transport_socket_options) PURE;
+                      Network::TransportSocketOptionsSharedPtr transport_socket_options,Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data) PURE;
+
+
 
   /**
    * Allocate a cluster from configuration proto.

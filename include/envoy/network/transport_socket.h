@@ -165,6 +165,9 @@ public:
    *        not be modified.
    */
   virtual void hashKey(std::vector<uint8_t>& key) const PURE;
+
+  // if send proxy protocol
+  virtual bool isSendProxyProtocol() const PURE;
 };
 
 typedef std::shared_ptr<TransportSocketOptions> TransportSocketOptionsSharedPtr;

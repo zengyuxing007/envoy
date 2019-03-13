@@ -278,6 +278,7 @@ void RequestStreamEncoderImpl::encodeHeaders(const HeaderMap& headers, bool end_
   StreamEncoderImpl::encodeHeaders(headers, end_stream);
 }
 
+/// http 解析对应的回调函数
 http_parser_settings ConnectionImpl::settings_{
     [](http_parser* parser) -> int {
       static_cast<ConnectionImpl*>(parser->data)->onMessageBeginBase();
@@ -324,6 +325,7 @@ ConnectionImpl::ConnectionImpl(Network::Connection& connection, http_parser_type
   parser_.data = this;
 }
 
+//// http header 
 void ConnectionImpl::completeLastHeader() {
   ENVOY_CONN_LOG(trace, "completed header: key={} value={}", connection_,
                  current_header_field_.c_str(), current_header_value_.c_str());
@@ -357,6 +359,7 @@ bool ConnectionImpl::maybeDirectDispatch(Buffer::Instance& data) {
   return true;
 }
 
+////codec
 void ConnectionImpl::dispatch(Buffer::Instance& data) {
   ENVOY_CONN_LOG(trace, "parsing {} bytes", connection_, data.length());
 
@@ -455,6 +458,7 @@ void ConnectionImpl::onMessageCompleteBase() {
   onMessageComplete();
 }
 
+/// 消息处理开始
 void ConnectionImpl::onMessageBeginBase() {
   ENVOY_CONN_LOG(trace, "message begin", connection_);
   ASSERT(!current_header_map_);
@@ -568,6 +572,7 @@ int ServerConnectionImpl::onHeadersComplete(HeaderMapImplPtr&& headers) {
   return 0;
 }
 
+/// 回调conn_manager_impl.cc newStream
 void ServerConnectionImpl::onMessageBegin() {
   if (!resetStreamCalled()) {
     ASSERT(!active_request_);
@@ -655,6 +660,7 @@ bool ClientConnectionImpl::cannotHaveBody() {
   }
 }
 
+///
 StreamEncoder& ClientConnectionImpl::newStream(StreamDecoder& response_decoder) {
   if (resetStreamCalled()) {
     throw CodecClientException("cannot create new streams after calling reset");
@@ -712,6 +718,7 @@ void ClientConnectionImpl::onBody(const char* data, size_t length) {
   }
 }
 
+/// message complete -- http 消息解析完成
 void ClientConnectionImpl::onMessageComplete() {
   ENVOY_CONN_LOG(trace, "message complete", connection_);
   if (ignore_message_complete_for_100_continue_) {
@@ -728,6 +735,7 @@ void ClientConnectionImpl::onMessageComplete() {
       deferred_end_stream_headers_.reset();
     } else {
       Buffer::OwnedImpl buffer;
+      /// 继续解码
       response.decoder_->decodeData(buffer, true);
     }
   }

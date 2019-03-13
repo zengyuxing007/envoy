@@ -315,6 +315,7 @@ void HttpConnectionManagerConfig::processFilter(
   filter_factories.push_back(callback);
 }
 
+/// 创建解码器
 Http::ServerConnectionPtr
 HttpConnectionManagerConfig::createCodec(Network::Connection& connection,
                                          const Buffer::Instance& data,
