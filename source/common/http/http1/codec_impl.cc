@@ -325,7 +325,7 @@ ConnectionImpl::ConnectionImpl(Network::Connection& connection, http_parser_type
   parser_.data = this;
 }
 
-//// http header 
+//// http header
 void ConnectionImpl::completeLastHeader() {
   ENVOY_CONN_LOG(trace, "completed header: key={} value={}", connection_,
                  current_header_field_.c_str(), current_header_value_.c_str());

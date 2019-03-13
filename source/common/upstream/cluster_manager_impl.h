@@ -56,12 +56,11 @@ public:
   allocateConnPool(Event::Dispatcher& dispatcher, HostConstSharedPtr host,
                    ResourcePriority priority, Http::Protocol protocol,
                    const Network::ConnectionSocket::OptionsSharedPtr& options) override;
-  Tcp::ConnectionPool::InstancePtr
-  allocateTcpConnPool(Event::Dispatcher& dispatcher, HostConstSharedPtr host,
-                      ResourcePriority priority,
-                      const Network::ConnectionSocket::OptionsSharedPtr& options,
-                      Network::TransportSocketOptionsSharedPtr transport_socket_options,
-                      Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data=nullptr) override;
+  Tcp::ConnectionPool::InstancePtr allocateTcpConnPool(
+      Event::Dispatcher& dispatcher, HostConstSharedPtr host, ResourcePriority priority,
+      const Network::ConnectionSocket::OptionsSharedPtr& options,
+      Network::TransportSocketOptionsSharedPtr transport_socket_options,
+      Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data = nullptr) override;
   ClusterSharedPtr clusterFromProto(const envoy::api::v2::Cluster& cluster, ClusterManager& cm,
                                     Outlier::EventLoggerSharedPtr outlier_event_logger,
                                     bool added_via_api) override;

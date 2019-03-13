@@ -46,8 +46,8 @@ Api::SysCallIntResult SocketOptionImpl::setSocketOption(Socket& socket,
     return {-1, ENOTSUP};
   }
   auto& os_syscalls = Api::OsSysCallsSingleton::get();
-  ENVOY_LOG(debug,"setSocketOption -- optname.first: {}, optname.second: {}, value: {}", optname.value().first,
-          optname.value().second, value.data());
+  ENVOY_LOG(debug, "setSocketOption -- optname.first: {}, optname.second: {}, value: {}",
+            optname.value().first, optname.value().second, value.data());
 
   return os_syscalls.setsockopt(socket.ioHandle().fd(), optname.value().first,
                                 optname.value().second, value.data(), value.size());

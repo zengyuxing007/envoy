@@ -786,7 +786,7 @@ void ConnectionManagerImpl::ActiveStream::traceRequest() {
   }
 }
 
-/// 解码filter 
+/// 解码filter
 void ConnectionManagerImpl::ActiveStream::decodeHeaders(ActiveStreamDecoderFilter* filter,
                                                         HeaderMap& headers, bool end_stream) {
   std::list<ActiveStreamDecoderFilterPtr>::iterator entry;

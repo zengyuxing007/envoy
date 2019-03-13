@@ -634,10 +634,8 @@ ClientConnectionImpl::ClientConnectionImpl(
 
         // Trigger a write event to close this connection out-of-band.
         file_event_->activate(Event::FileReadyType::Write);
-      }
-      else{
-          ENVOY_LOG_MISC(debug,"Bind success to {}",source_to_use->asString());
-
+      } else {
+        ENVOY_LOG_MISC(debug, "Bind success to {}", source_to_use->asString());
       }
     }
   }

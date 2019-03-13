@@ -1,5 +1,6 @@
 #include "common/upstream/cluster_manager_impl.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <functional>
@@ -7,7 +8,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <algorithm>
 
 #include "envoy/admin/v2alpha/config_dump.pb.h"
 #include "envoy/event/dispatcher.h"
@@ -1202,68 +1202,62 @@ ClusterManagerImpl::ThreadLocalClusterManagerImpl::ClusterEntry::tcpConnPool(
   TcpConnPoolsContainer& container = parent_.host_tcp_conn_pool_map_[host];
   if (!container.pools_[hash_key]) {
 
-    ///proxy protocol data
+    /// proxy protocol data
     const Network::Connection* downStreamConn = context->downstreamConnection();
-    Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data = std::make_shared<Network::ProxyProtocol::proxy_protocol_data>();
+    Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data =
+        std::make_shared<Network::ProxyProtocol::proxy_protocol_data>();
 
-    if(downStreamConn)
-    {
-        auto srcAddr = downStreamConn->localAddress().get();
-        auto remoteAddr = downStreamConn->remoteAddress().get();
-        if(srcAddr && remoteAddr)
-        {
-            auto srcIp = srcAddr->ip();
-            auto srcPort = srcIp->port();
-            auto remoteIp = remoteAddr->ip();
-            auto remotePort = remoteIp->port();
+    if (downStreamConn) {
+      auto srcAddr = downStreamConn->localAddress().get();
+      auto remoteAddr = downStreamConn->remoteAddress().get();
+      if (srcAddr && remoteAddr) {
+        auto srcIp = srcAddr->ip();
+        auto srcPort = srcIp->port();
+        auto remoteIp = remoteAddr->ip();
+        auto remotePort = remoteIp->port();
 
-            ENVOY_LOG(debug,"proxy protocol: srcIp: {}, remoteIp: {}",srcIp->addressAsString(),remoteIp->addressAsString());
+        ENVOY_LOG(debug, "proxy protocol: srcIp: {}, remoteIp: {}", srcIp->addressAsString(),
+                  remoteIp->addressAsString());
 
-            if(Network::Utility::isLoopbackAddress(*remoteAddr))
-            {
-                ENVOY_LOG(debug, "proxy protocol-- remote addr is loopback");
-                proxy_data->dest_is_local = true;
-            }
-
-            if(srcIp->version() != remoteIp->version())
-            {
-                //error
-                ENVOY_LOG(error,"proxy protocol-- srcIP version != remoteIp version");
-            }
-            if(srcIp->version() == Network::Address::IpVersion::v4)
-            {
-                proxy_data->fam = 0x11;  //TCP over IPv4
-                proxy_data->addr.ip4.src_addr = srcIp->ipv4()->address();
-                proxy_data->addr.ip4.src_port = srcPort;
-                proxy_data->addr.ip4.dst_addr = remoteIp->ipv4()->address();
-                proxy_data->addr.ip4.dst_port = remotePort;
-            }
-            else{
-                //ipv6
-                ENVOY_LOG(error,"proxy protocol now unsupport ipv6 ");
-            }
+        if (Network::Utility::isLoopbackAddress(*remoteAddr)) {
+          ENVOY_LOG(debug, "proxy protocol-- remote addr is loopback");
+          proxy_data->dest_is_local = true;
         }
-        //defined in <type>
-        proxy_data->tlv.type = 0x30; //PP2_TYPE_NETNS;
-        int len = strlen("hello");
-        len = std::min(len,16);
-        proxy_data->tlv.length = ::htons(len);
-        strncpy(reinterpret_cast<char*>(proxy_data->tlv.value),"hello",len);
 
-        proxy_data->length = len + 15;
-        proxy_data->len = ::htons(proxy_data->length);
+        if (srcIp->version() != remoteIp->version()) {
+          // error
+          ENVOY_LOG(error, "proxy protocol-- srcIP version != remoteIp version");
+        }
+        if (srcIp->version() == Network::Address::IpVersion::v4) {
+          proxy_data->fam = 0x11; // TCP over IPv4
+          proxy_data->addr.ip4.src_addr = srcIp->ipv4()->address();
+          proxy_data->addr.ip4.src_port = srcPort;
+          proxy_data->addr.ip4.dst_addr = remoteIp->ipv4()->address();
+          proxy_data->addr.ip4.dst_port = remotePort;
+        } else {
+          // ipv6
+          ENVOY_LOG(error, "proxy protocol now unsupport ipv6 ");
+        }
+      }
+      // defined in <type>
+      proxy_data->tlv.type = 0x30; // PP2_TYPE_NETNS;
+      int len = strlen("hello");
+      len = std::min(len, 16);
+      proxy_data->tlv.length = ::htons(len);
+      strncpy(reinterpret_cast<char*>(proxy_data->tlv.value), "hello", len);
 
-        uint8_t* proxy_data_buf = reinterpret_cast<uint8_t*>(proxy_data.get());
-        ////
-        memmove(&proxy_data_buf[28],&(proxy_data->tlv),sizeof(Network::ProxyProtocol::pp2_tlv));
+      proxy_data->length = len + 15;
+      proxy_data->len = ::htons(proxy_data->length);
 
+      uint8_t* proxy_data_buf = reinterpret_cast<uint8_t*>(proxy_data.get());
+      ////
+      memmove(&proxy_data_buf[28], &(proxy_data->tlv), sizeof(Network::ProxyProtocol::pp2_tlv));
     }
-    
 
     container.pools_[hash_key] = parent_.parent_.factory_.allocateTcpConnPool(
         parent_.thread_local_dispatcher_, host, priority,
         have_options ? context->downstreamConnection()->socketOptions() : nullptr,
-        transport_socket_options,proxy_data);
+        transport_socket_options, proxy_data);
   }
 
   return container.pools_[hash_key].get();
@@ -1294,12 +1288,9 @@ Tcp::ConnectionPool::InstancePtr ProdClusterManagerFactory::allocateTcpConnPool(
     const Network::ConnectionSocket::OptionsSharedPtr& options,
     Network::TransportSocketOptionsSharedPtr transport_socket_options,
     Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data) {
-  return Tcp::ConnectionPool::InstancePtr{
-      new Tcp::ConnPoolImpl(dispatcher, host, priority, options, transport_socket_options,proxy_data)};
+  return Tcp::ConnectionPool::InstancePtr{new Tcp::ConnPoolImpl(
+      dispatcher, host, priority, options, transport_socket_options, proxy_data)};
 }
-
-
-
 
 ClusterSharedPtr ProdClusterManagerFactory::clusterFromProto(
     const envoy::api::v2::Cluster& cluster, ClusterManager& cm,

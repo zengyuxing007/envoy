@@ -5,6 +5,7 @@
 #include "envoy/event/dispatcher.h"
 #include "envoy/event/timer.h"
 #include "envoy/upstream/upstream.h"
+
 #include "common/buffer/buffer_impl.h"
 
 namespace Envoy {
@@ -14,10 +15,9 @@ ConnPoolImpl::ConnPoolImpl(Event::Dispatcher& dispatcher, Upstream::HostConstSha
                            Upstream::ResourcePriority priority,
                            const Network::ConnectionSocket::OptionsSharedPtr& options,
                            Network::TransportSocketOptionsSharedPtr transport_socket_options,
-						   Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data)
+                           Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data)
     : dispatcher_(dispatcher), host_(host), priority_(priority), socket_options_(options),
-      transport_socket_options_(transport_socket_options),
-	  proxy_protocol_data_(proxy_data),
+      transport_socket_options_(transport_socket_options), proxy_protocol_data_(proxy_data),
       upstream_ready_timer_(dispatcher_.createTimer([this]() { onUpstreamReady(); })) {}
 
 ConnPoolImpl::~ConnPoolImpl() {
@@ -208,21 +208,20 @@ void ConnPoolImpl::onConnectionEvent(ActiveConn& conn, Network::ConnectionEvent 
   if (event == Network::ConnectionEvent::Connected) {
     ENVOY_CONN_LOG(debug, "connection ok--- zyx", *conn.conn_);
     conn_connect_ms_->complete();
-    if(transport_socket_options_->isSendProxyProtocol()){
-        //check the upstream server if localhost
-        if(proxy_protocol_data_->dest_is_local) {
-            ENVOY_CONN_LOG(debug,"config send proxy protocol,but dest is local ,ignore",*conn.conn_);
-        }
-        else{
-            /////send proxy protocol data
-            Buffer::InstancePtr proxyDataPtr = std::make_unique<Buffer::OwnedImpl>();
-            proxyDataPtr->add(reinterpret_cast<void*>(proxy_protocol_data_.get()),proxy_protocol_data_->size());
-            conn.conn_->write(*proxyDataPtr,false);
-            ENVOY_CONN_LOG(debug, "connection ok,send proxy protocol data", *conn.conn_);
-        }
-    }
-    else{
-        ENVOY_CONN_LOG(debug,"proxy protocol not config to send",*conn.conn_);
+    if (transport_socket_options_->isSendProxyProtocol()) {
+      // check the upstream server if localhost
+      if (proxy_protocol_data_->dest_is_local) {
+        ENVOY_CONN_LOG(debug, "config send proxy protocol,but dest is local ,ignore", *conn.conn_);
+      } else {
+        /////send proxy protocol data
+        Buffer::InstancePtr proxyDataPtr = std::make_unique<Buffer::OwnedImpl>();
+        proxyDataPtr->add(reinterpret_cast<void*>(proxy_protocol_data_.get()),
+                          proxy_protocol_data_->size());
+        conn.conn_->write(*proxyDataPtr, false);
+        ENVOY_CONN_LOG(debug, "connection ok,send proxy protocol data", *conn.conn_);
+      }
+    } else {
+      ENVOY_CONN_LOG(debug, "proxy protocol not config to send", *conn.conn_);
     }
     processIdleConnection(conn, true, false);
   }

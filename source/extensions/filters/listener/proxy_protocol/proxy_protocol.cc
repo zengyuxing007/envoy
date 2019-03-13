@@ -50,7 +50,7 @@ void Filter::onRead() {
   } catch (const EnvoyException& ee) {
     config_->stats_.downstream_cx_proxy_proto_error_.inc();
     cb_->continueFilterChain(false);
-    ENVOY_LOG(debug,"proxy_protocol exception: {}",ee.what());
+    ENVOY_LOG(debug, "proxy_protocol exception: {}", ee.what());
   }
 }
 
@@ -84,18 +84,19 @@ void Filter::onReadWorker() {
       throw EnvoyException("failed to read proxy protocol");
     }
 
-    ENVOY_LOG(debug,"local_address {}, remote_address {}",
-            proxy_protocol_header_.value().local_address_->ip()->addressAsString(),
-            proxy_protocol_header_.value().remote_address_->ip()->addressAsString());
+    ENVOY_LOG(debug, "local_address {}, remote_address {}",
+              proxy_protocol_header_.value().local_address_->ip()->addressAsString(),
+              proxy_protocol_header_.value().remote_address_->ip()->addressAsString());
 
     // Only set the local address if it really changed, and mark it as address being restored.
     if (*proxy_protocol_header_.value().local_address_ != *socket.localAddress()) {
       socket.restoreLocalAddress(proxy_protocol_header_.value().local_address_);
     }
-    if(Network::Utility::isLoopbackAddress(*(socket.remoteAddress()))){
-        ENVOY_LOG(debug," remote address: {} is local, no change remote Addr",socket.remoteAddress()->ip()->addressAsString());
-    }else {
-        socket.setRemoteAddress(proxy_protocol_header_.value().remote_address_);
+    if (Network::Utility::isLoopbackAddress(*(socket.remoteAddress()))) {
+      ENVOY_LOG(debug, " remote address: {} is local, no change remote Addr",
+                socket.remoteAddress()->ip()->addressAsString());
+    } else {
+      socket.setRemoteAddress(proxy_protocol_header_.value().remote_address_);
     }
   }
 
@@ -249,7 +250,8 @@ void Filter::parseV1Header(char* buf, size_t len) {
 
 bool Filter::parseExtensions(int fd) {
 
-  ENVOY_LOG(debug,"proxy protocol extension length: {}",proxy_protocol_header_.value().extensions_length_);
+  ENVOY_LOG(debug, "proxy protocol extension length: {}",
+            proxy_protocol_header_.value().extensions_length_);
   // If we ever implement extensions elsewhere, be sure to
   // continue to skip and ignore those for LOCAL.
   while (proxy_protocol_header_.value().extensions_length_) {
@@ -260,7 +262,7 @@ bool Filter::parseExtensions(int fd) {
       throw EnvoyException("failed to read proxy protocol (no bytes avail)");
     }
     if (bytes_avail == 0) {
-      ENVOY_LOG(error,"but have no bytes_avail");
+      ENVOY_LOG(error, "but have no bytes_avail");
       return false;
     }
     bytes_avail = std::min(size_t(bytes_avail), sizeof(buf_));
@@ -273,30 +275,28 @@ bool Filter::parseExtensions(int fd) {
   }
 
   PACKED_STRUCT(struct pp2_tlv {
-            uint8_t type;
-            uint16_t length;
-            uint8_t value[0];
-          });
+    uint8_t type;
+    uint16_t length;
+    uint8_t value[0];
+  });
 
   pp2_tlv* extensionData = reinterpret_cast<pp2_tlv*>(buf_);
 
-  if(extensionData->type == 0x30) //Network::ProxyProtocol::PP2_TYPE_NETNS)
+  if (extensionData->type == 0x30) // Network::ProxyProtocol::PP2_TYPE_NETNS)
   {
-      extensionData->length = ::ntohs(extensionData->length);
-      ENVOY_LOG(debug,"Network::ProxyProtocol::PP2_TYPE_NETNS---length:{}",extensionData->length);
-      if(extensionData->length && extensionData->length < 16)
-      {
-          //get data
-          char trafficMark[16];
-          strncpy(trafficMark,reinterpret_cast<const char*>(extensionData->value),extensionData->length);
-          ENVOY_LOG(debug,"get traffice mark : {}",trafficMark);
-      }
+    extensionData->length = ::ntohs(extensionData->length);
+    ENVOY_LOG(debug, "Network::ProxyProtocol::PP2_TYPE_NETNS---length:{}", extensionData->length);
+    if (extensionData->length && extensionData->length < 16) {
+      // get data
+      char trafficMark[16];
+      strncpy(trafficMark, reinterpret_cast<const char*>(extensionData->value),
+              extensionData->length);
+      ENVOY_LOG(debug, "get traffice mark : {}", trafficMark);
+    }
+  } else {
+    ENVOY_LOG(debug, "unknow type : {}", extensionData->type);
+    return false;
   }
-  else{
-      ENVOY_LOG(debug,"unknow type : {}",extensionData->type);
-      return false;
-  }
-
 
   return true;
 }

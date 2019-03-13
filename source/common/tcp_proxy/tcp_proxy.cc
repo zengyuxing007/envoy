@@ -335,7 +335,7 @@ void Filter::UpstreamCallbacks::drain(Drainer& drainer) {
 Network::FilterStatus Filter::initializeUpstreamConnection() {
   ASSERT(upstream_conn_data_ == nullptr);
 
-  ENVOY_CONN_LOG(debug,"initializeUpstreamConnection ---",read_callbacks_->connection());
+  ENVOY_CONN_LOG(debug, "initializeUpstreamConnection ---", read_callbacks_->connection());
 
   const std::string& cluster_name = getUpstreamCluster();
 
@@ -345,7 +345,8 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
     ENVOY_CONN_LOG(debug, "Creating connection to cluster {}", read_callbacks_->connection(),
                    cluster_name);
   } else {
-    ENVOY_CONN_LOG(debug, "thread_local_cluster is null , initializeUpstreamConnection failed",read_callbacks_->connection());
+    ENVOY_CONN_LOG(debug, "thread_local_cluster is null , initializeUpstreamConnection failed",
+                   read_callbacks_->connection());
     config_->stats().downstream_cx_no_route_.inc();
     getStreamInfo().setResponseFlag(StreamInfo::ResponseFlag::NoRouteFound);
     onInitFailure(UpstreamFailureReason::NO_ROUTE);
@@ -382,14 +383,14 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
         downstreamConnection()->streamInfo().filterState().getDataReadOnly<UpstreamServerName>(
             UpstreamServerName::key());
     transport_socket_options = std::make_shared<Network::TransportSocketOptionsImpl>(
-        original_requested_server_name.value(),if_send_proxy_protocol);
-  }
-  else{
-    transport_socket_options = std::make_shared<Network::TransportSocketOptionsImpl>("",if_send_proxy_protocol);
+        original_requested_server_name.value(), if_send_proxy_protocol);
+  } else {
+    transport_socket_options =
+        std::make_shared<Network::TransportSocketOptionsImpl>("", if_send_proxy_protocol);
   }
 
-  ENVOY_CONN_LOG(debug,"if send_proxy_protocol --- {}",read_callbacks_->connection(),if_send_proxy_protocol);
-
+  ENVOY_CONN_LOG(debug, "if send_proxy_protocol --- {}", read_callbacks_->connection(),
+                 if_send_proxy_protocol);
 
   Tcp::ConnectionPool::Instance* conn_pool = cluster_manager_.tcpConnPoolForCluster(
       cluster_name, Upstream::ResourcePriority::Default, this, transport_socket_options);

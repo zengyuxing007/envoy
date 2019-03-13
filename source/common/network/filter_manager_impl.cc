@@ -50,7 +50,7 @@ void FilterManagerImpl::onContinueReading(ActiveReadFilter* filter) {
       FilterStatus status = (*entry)->filter_->onNewConnection();
       if (status == FilterStatus::StopIteration) {
 
-        ENVOY_LOG_MISC(debug,"onNewConnection-- filter {} status -> StopIteration");
+        ENVOY_LOG_MISC(debug, "onNewConnection-- filter {} status -> StopIteration");
 
         return;
       }
@@ -60,7 +60,7 @@ void FilterManagerImpl::onContinueReading(ActiveReadFilter* filter) {
     if (read_buffer.buffer.length() > 0 || read_buffer.end_stream) {
       FilterStatus status = (*entry)->filter_->onData(read_buffer.buffer, read_buffer.end_stream);
       if (status == FilterStatus::StopIteration) {
-        ENVOY_LOG_MISC(debug,"onData-- filter {} status -> StopIteration");
+        ENVOY_LOG_MISC(debug, "onData-- filter {} status -> StopIteration");
         return;
       }
     }
