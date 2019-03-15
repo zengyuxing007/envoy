@@ -17,11 +17,11 @@
 #include "common/common/fmt.h"
 #include "common/common/macros.h"
 #include "common/common/utility.h"
+#include "common/config/metadata.h"
 #include "common/config/well_known_names.h"
 #include "common/network/transport_socket_options_impl.h"
 #include "common/network/upstream_server_name.h"
 #include "common/router/metadatamatchcriteria_impl.h"
-#include "common/config/metadata.h"
 
 namespace Envoy {
 namespace TcpProxy {
@@ -70,8 +70,7 @@ Config::Config(const envoy::config::filter::network::tcp_proxy::v2::TcpProxy& co
       is_send_proxy_protocol_(config.send_proxy_protocol()),
       upstream_drain_manager_slot_(context.threadLocal().allocateSlot()),
       shared_config_(std::make_shared<SharedConfig>(config, context)),
-      random_generator_(context.random()) ,
-      cluster_manager_(context.clusterManager()){
+      random_generator_(context.random()), cluster_manager_(context.clusterManager()) {
 
   upstream_drain_manager_slot_->set([](Event::Dispatcher&) {
     return ThreadLocal::ThreadLocalObjectSharedPtr(new UpstreamDrainManager());
@@ -163,40 +162,41 @@ const std::string& Config::getRegularRouteFromEntries(Network::Connection& conne
 
 const std::string& Config::getRouteFromEntries(Network::Connection& connection) {
 
-  ENVOY_CONN_LOG(debug,"getRouteFromEntries ---",connection);
+  ENVOY_CONN_LOG(debug, "getRouteFromEntries ---", connection);
 
   auto color = connection.getPreferClusterColor();
-  //TODO zyx
-  if(!color.empty()){
-      ENVOY_CONN_LOG(debug,"try to found color cluster: {}",connection,color);
-      // ignore weight config
-      for (const WeightedClusterEntrySharedPtr& cluster : weighted_clusters_) {
+  // TODO zyx
+  if (!color.empty()) {
+    ENVOY_CONN_LOG(debug, "try to found color cluster: {}", connection, color);
+    // ignore weight config
+    for (const WeightedClusterEntrySharedPtr& cluster : weighted_clusters_) {
 
-          Upstream::ThreadLocalCluster* thread_local_cluster = cluster_manager_.get(cluster->clusterName());
-          Upstream::ClusterInfoConstSharedPtr clusterInfo = thread_local_cluster->info();
+      Upstream::ThreadLocalCluster* thread_local_cluster =
+          cluster_manager_.get(cluster->clusterName());
+      Upstream::ClusterInfoConstSharedPtr clusterInfo = thread_local_cluster->info();
 
-          auto metadata = clusterInfo->metadata();
-          const std::string& service_color = 
-              Envoy::Config::Metadata::metadataValue(metadata, "service_color", "value").string_value();
+      auto metadata = clusterInfo->metadata();
+      const std::string& service_color =
+          Envoy::Config::Metadata::metadataValue(metadata, "service_color", "value").string_value();
 
-          ENVOY_CONN_LOG(debug,"cluster {} config service color :{}",connection,cluster->clusterName(),service_color);
+      ENVOY_CONN_LOG(debug, "cluster {} config service color :{}", connection,
+                     cluster->clusterName(), service_color);
 
-          if(service_color == color)
-          {
-              ENVOY_CONN_LOG(debug,"found",connection);
-              return cluster->clusterName();
-          }
-          continue;
+      if (service_color == color) {
+        ENVOY_CONN_LOG(debug, "found", connection);
+        return cluster->clusterName();
       }
-      ENVOY_CONN_LOG(debug,"not found color {} cluster",connection,color);
+      continue;
+    }
+    ENVOY_CONN_LOG(debug, "not found color {} cluster", connection, color);
   }
 
   if (weighted_clusters_.empty()) {
 
-    ENVOY_CONN_LOG(debug,"getRegularRouteFromEntries--",connection);
+    ENVOY_CONN_LOG(debug, "getRegularRouteFromEntries--", connection);
     return getRegularRouteFromEntries(connection);
   }
-  ENVOY_CONN_LOG(debug,"pickCluster ---",connection);
+  ENVOY_CONN_LOG(debug, "pickCluster ---", connection);
   return WeightedClusterUtil::pickCluster(weighted_clusters_, total_cluster_weight_,
                                           random_generator_.random(), false)
       ->clusterName();
@@ -373,14 +373,15 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
 
   ENVOY_CONN_LOG(debug, "initializeUpstreamConnection ---", read_callbacks_->connection());
 
-   ENVOY_LOG(debug,"request prefer upstream cluster color: {}",read_callbacks_->connection().getPreferClusterColor());
+  ENVOY_LOG(debug, "request prefer upstream cluster color: {}",
+            read_callbacks_->connection().getPreferClusterColor());
 
   const std::string& cluster_name = getUpstreamCluster();
 
-  ENVOY_LOG(debug,"---- getUpstreamCluster: {}",cluster_name);
+  ENVOY_LOG(debug, "---- getUpstreamCluster: {}", cluster_name);
 
-  if(cluster_name.empty()){
-      ENVOY_LOG(debug,"--- not found corresponing cluster");
+  if (cluster_name.empty()) {
+    ENVOY_LOG(debug, "--- not found corresponing cluster");
   }
 
   Upstream::ThreadLocalCluster* thread_local_cluster = cluster_manager_.get(cluster_name);
@@ -598,8 +599,8 @@ void Filter::onUpstreamEvent(Network::ConnectionEvent event) {
     ENVOY_LOG(debug, "TCP:onUpstreamEvent(), requestedServerName: {}",
               getStreamInfo().requestedServerName());
 
-
-    ENVOY_LOG(debug,"prefer cluter color: {}",read_callbacks_->connection().getPreferClusterColor());
+    ENVOY_LOG(debug, "prefer cluter color: {}",
+              read_callbacks_->connection().getPreferClusterColor());
 
     if (config_->idleTimeout()) {
       // The idle_timer_ can be moved to a Drainer, so related callbacks call into

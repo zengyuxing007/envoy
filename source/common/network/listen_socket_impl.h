@@ -157,7 +157,7 @@ public:
   absl::string_view requestedServerName() const override { return server_name_; }
 
   void setPreferClusterColor(absl::string_view cluster_color) override {
-      prefer_cluster_color_ = std::string(cluster_color);
+    prefer_cluster_color_ = std::string(cluster_color);
   }
 
   absl::string_view getPreferClusterColor() const override { return prefer_cluster_color_; }

@@ -65,7 +65,7 @@ class UpstreamDrainManager;
  * This configuration holds a TLS slot, and therefore it must be destructed
  * on the main thread.
  */
-class Config:Logger::Loggable<Logger::Id::config>  {
+class Config : Logger::Loggable<Logger::Id::config> {
 public:
   /**
    * Configuration that can be shared and have an arbitrary lifetime safely.
