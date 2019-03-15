@@ -181,8 +181,8 @@ class Filter : public Network::ReadFilter,
                Tcp::ConnectionPool::Callbacks,
                protected Logger::Loggable<Logger::Id::filter> {
 public:
-  Filter(ConfigSharedPtr config, Upstream::ClusterManager& cluster_manager,
-         TimeSource& time_source);
+  Filter(ConfigSharedPtr config, Upstream::ClusterManager& cluster_manager, TimeSource& time_source,
+         const std::string& default_downstream_color);
   ~Filter();
 
   // Network::ReadFilter
@@ -267,6 +267,8 @@ protected:
 
   virtual StreamInfo::StreamInfo& getStreamInfo() { return stream_info_; }
 
+  const std::string& getDefaultDownStreamColor() { return default_downstream_color_; };
+
   void initialize(Network::ReadFilterCallbacks& callbacks, bool set_connection_stats);
   Network::FilterStatus initializeUpstreamConnection();
   void onConnectTimeout();
@@ -289,6 +291,7 @@ protected:
   StreamInfo::StreamInfoImpl stream_info_;
   uint32_t connect_attempts_{};
   bool connecting_{};
+  std::string default_downstream_color_;
 };
 
 // This class deals with an upstream connection that needs to finish flushing, when the downstream

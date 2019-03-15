@@ -12,6 +12,7 @@
 #include "envoy/stats/scope.h"
 
 #include "common/common/logger.h"
+#include "common/config/metadata.h"
 #include "common/network/cidr_range.h"
 #include "common/network/lc_trie.h"
 
@@ -257,6 +258,13 @@ public:
   Stats::Scope& listenerScope() override { return *listener_scope_; }
   uint64_t listenerTag() const override { return listener_tag_; }
   const std::string& name() const override { return name_; }
+
+  const std::string& getConfiguredDownStreamColor() const override {
+
+    return Envoy::Config::Metadata::metadataValue(config_.metadata(), "config_downstream_color",
+                                                  "value")
+        .string_value();
+  }
 
   // Server::Configuration::ListenerFactoryContext
   AccessLog::AccessLogManager& accessLogManager() override {

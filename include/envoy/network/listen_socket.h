@@ -252,6 +252,9 @@ enum AddrType {
 
 #define PP2_TYPE_NETNS 0x30
 
+#define PP2_TLV_HEADER_SIZE 3
+#define SIZEOF_IPV4 12
+
 #pragma pack(1)
 
 struct pp2_tlv {

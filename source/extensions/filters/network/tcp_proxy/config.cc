@@ -26,11 +26,17 @@ Network::FilterFactoryCb ConfigFactory::createFilterFactoryFromProtoTyped(
     ASSERT(proto_config.deprecated_v1().routes_size() > 0);
   }
 
+  // Envoy::Server::Configuration::ListenerFactoryContext* listener_context =
+  // static_cast<Envoy::Server::Configuration::ListenerFactoryContext*>(&context); get the
+  // downstream color
+  const Network::ListenerConfig& listener_config = context.listenerConfig();
+  auto color = listener_config.getConfiguredDownStreamColor();
+
   Envoy::TcpProxy::ConfigSharedPtr filter_config(
       std::make_shared<Envoy::TcpProxy::Config>(proto_config, context));
-  return [filter_config, &context](Network::FilterManager& filter_manager) -> void {
+  return [color, filter_config, &context](Network::FilterManager& filter_manager) -> void {
     filter_manager.addReadFilter(std::make_shared<Envoy::TcpProxy::Filter>(
-        filter_config, context.clusterManager(), context.dispatcher().timeSource()));
+        filter_config, context.clusterManager(), context.dispatcher().timeSource(), color));
   };
 }
 

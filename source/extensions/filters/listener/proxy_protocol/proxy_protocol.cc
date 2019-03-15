@@ -252,6 +252,8 @@ bool Filter::parseExtensions(int fd) {
 
   ENVOY_LOG(debug, "proxy protocol extension length: {}",
             proxy_protocol_header_.value().extensions_length_);
+  if (proxy_protocol_header_.value().extensions_length_ < 1)
+    return true;
   // If we ever implement extensions elsewhere, be sure to
   // continue to skip and ignore those for LOCAL.
   while (proxy_protocol_header_.value().extensions_length_) {
@@ -289,8 +291,10 @@ bool Filter::parseExtensions(int fd) {
     if (extensionData->length && extensionData->length < 16) {
       // get data
       char trafficMark[16];
+      memset(trafficMark, 0x00, 16);
       strncpy(trafficMark, reinterpret_cast<const char*>(extensionData->value),
               extensionData->length);
+      trafficMark[extensionData->length] = '\0';
       ENVOY_LOG(debug, "get traffice mark : {}", trafficMark);
 
       Network::ConnectionSocket& socket = cb_->socket();

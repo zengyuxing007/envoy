@@ -267,6 +267,10 @@ private:
     Stats::Scope& listenerScope() override { return *scope_; }
     uint64_t listenerTag() const override { return 0; }
     const std::string& name() const override { return name_; }
+    const std::string& getConfiguredDownStreamColor() const override {
+      static std::string null_string_("");
+      return null_string_;
+    }
 
     AdminImpl& parent_;
     const std::string name_;

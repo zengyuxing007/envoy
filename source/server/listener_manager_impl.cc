@@ -736,6 +736,14 @@ bool ListenerManagerImpl::addOrUpdateListener(const envoy::api::v2::Listener& co
   const uint64_t hash = MessageUtil::hash(config);
   ENVOY_LOG(debug, "begin add/update listener: name={} hash={}", name, hash);
 
+  auto color =
+      Envoy::Config::Metadata::metadataValue(config.metadata(), "config_downstream_color", "value")
+          .string_value();
+
+  if (!color.empty()) {
+    ENVOY_LOG(debug, "listener: {} config downstream color: {}", name, color);
+  }
+
   auto existing_active_listener = getListenerByName(active_listeners_, name);
   auto existing_warming_listener = getListenerByName(warming_listeners_, name);
 

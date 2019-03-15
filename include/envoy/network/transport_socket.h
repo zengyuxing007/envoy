@@ -168,6 +168,8 @@ public:
 
   // if send proxy protocol
   virtual bool isSendProxyProtocol() const PURE;
+
+  virtual const std::string& getDefaultDownStreamColor() const PURE;
 };
 
 typedef std::shared_ptr<TransportSocketOptions> TransportSocketOptionsSharedPtr;

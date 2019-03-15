@@ -165,7 +165,7 @@ const std::string& Config::getRouteFromEntries(Network::Connection& connection) 
   ENVOY_CONN_LOG(debug, "getRouteFromEntries ---", connection);
 
   auto color = connection.getPreferClusterColor();
-  // TODO zyx
+  // TODO
   if (!color.empty()) {
     ENVOY_CONN_LOG(debug, "try to found color cluster: {}", connection, color);
     // ignore weight config
@@ -179,10 +179,14 @@ const std::string& Config::getRouteFromEntries(Network::Connection& connection) 
       const std::string& service_color =
           Envoy::Config::Metadata::metadataValue(metadata, "service_color", "value").string_value();
 
-      ENVOY_CONN_LOG(debug, "cluster {} config service color :{}", connection,
+      ENVOY_CONN_LOG(debug, "cluster {} config service color: {}", connection,
                      cluster->clusterName(), service_color);
 
-      if (service_color == color) {
+      if (service_color.length() != color.length()) {
+        continue;
+      }
+
+      if (!strncmp(service_color.c_str(), color.data(), color.length())) {
         ENVOY_CONN_LOG(debug, "found", connection);
         return cluster->clusterName();
       }
@@ -192,7 +196,6 @@ const std::string& Config::getRouteFromEntries(Network::Connection& connection) 
   }
 
   if (weighted_clusters_.empty()) {
-
     ENVOY_CONN_LOG(debug, "getRegularRouteFromEntries--", connection);
     return getRegularRouteFromEntries(connection);
   }
@@ -207,9 +210,10 @@ UpstreamDrainManager& Config::drainManager() {
 }
 
 Filter::Filter(ConfigSharedPtr config, Upstream::ClusterManager& cluster_manager,
-               TimeSource& time_source)
+               TimeSource& time_source, const std::string& default_downstream_color)
     : config_(config), cluster_manager_(cluster_manager), downstream_callbacks_(*this),
-      upstream_callbacks_(new UpstreamCallbacks(this)), stream_info_(time_source) {
+      upstream_callbacks_(new UpstreamCallbacks(this)), stream_info_(time_source),
+      default_downstream_color_(default_downstream_color) {
   ASSERT(config != nullptr);
 }
 
@@ -428,10 +432,11 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
         downstreamConnection()->streamInfo().filterState().getDataReadOnly<UpstreamServerName>(
             UpstreamServerName::key());
     transport_socket_options = std::make_shared<Network::TransportSocketOptionsImpl>(
-        original_requested_server_name.value(), if_send_proxy_protocol);
+        original_requested_server_name.value(), if_send_proxy_protocol,
+        default_downstream_color_.c_str());
   } else {
-    transport_socket_options =
-        std::make_shared<Network::TransportSocketOptionsImpl>("", if_send_proxy_protocol);
+    transport_socket_options = std::make_shared<Network::TransportSocketOptionsImpl>(
+        "", if_send_proxy_protocol, default_downstream_color_.c_str());
   }
 
   ENVOY_CONN_LOG(debug, "if send_proxy_protocol --- {}", read_callbacks_->connection(),

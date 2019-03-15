@@ -1234,24 +1234,49 @@ ClusterManagerImpl::ThreadLocalClusterManagerImpl::ClusterEntry::tcpConnPool(
           proxy_data->addr.ip4.src_port = srcPort;
           proxy_data->addr.ip4.dst_addr = remoteIp->ipv4()->address();
           proxy_data->addr.ip4.dst_port = remotePort;
+
+          proxy_data->length += SIZEOF_IPV4;
         } else {
           // ipv6
           ENVOY_LOG(error, "proxy protocol now unsupport ipv6 ");
         }
       }
-      // defined in <type>
-      proxy_data->tlv.type = 0x30; // PP2_TYPE_NETNS;
-      int len = strlen("11111");
-      len = std::min(len, 16);
-      proxy_data->tlv.length = ::htons(len);
-      strncpy(reinterpret_cast<char*>(proxy_data->tlv.value), "11111", len);
 
-      proxy_data->length = len + 15;
+      std::string send_color("");
+
+      // get the downstream color
+      auto down_stream_color = downStreamConn->getPreferClusterColor();
+      auto listener_config_color = transport_socket_options->getDefaultDownStreamColor();
+
+      if (!down_stream_color.empty()) {
+        send_color = down_stream_color.data();
+        ENVOY_LOG(debug, "using downStream connection color: {}", down_stream_color);
+      } else if (!listener_config_color.empty()) {
+        send_color = listener_config_color;
+        ENVOY_LOG(debug, "using listener config default color: {}", send_color);
+      }
+
+      if (!send_color.empty()) {
+        // add extesion color property
+        // defined in <type>
+        proxy_data->tlv.type = 0x30; // PP2_TYPE_NETNS;
+
+        int len = send_color.length();
+        len = std::min(len, 16);
+        proxy_data->tlv.length = ::htons(len);
+
+        strncpy(reinterpret_cast<char*>(proxy_data->tlv.value), send_color.data(), len);
+
+        proxy_data->length += len + PP2_TLV_HEADER_SIZE;
+
+        uint8_t* proxy_data_buf = reinterpret_cast<uint8_t*>(proxy_data.get());
+        ////
+        memmove(&proxy_data_buf[28], &(proxy_data->tlv), sizeof(Network::ProxyProtocol::pp2_tlv));
+      } else {
+        ENVOY_LOG(debug, "proxy protocol : not color data--");
+      }
+
       proxy_data->len = ::htons(proxy_data->length);
-
-      uint8_t* proxy_data_buf = reinterpret_cast<uint8_t*>(proxy_data.get());
-      ////
-      memmove(&proxy_data_buf[28], &(proxy_data->tlv), sizeof(Network::ProxyProtocol::pp2_tlv));
     }
 
     container.pools_[hash_key] = parent_.parent_.factory_.allocateTcpConnPool(

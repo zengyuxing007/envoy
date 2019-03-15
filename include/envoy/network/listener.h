@@ -80,6 +80,13 @@ public:
    * @return const std::string& the listener's name.
    */
   virtual const std::string& name() const PURE;
+
+  /**
+   * @return const std::string& the listener configured traffic marking color;
+   * when the downstream have no color, and opening proxy protocol options
+   * (send_proxy_protocol=true), will transfer color property to upstream connections
+   */
+  virtual const std::string& getConfiguredDownStreamColor() const PURE;
 };
 
 /**
