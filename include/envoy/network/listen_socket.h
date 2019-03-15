@@ -215,6 +215,13 @@ public:
    * @return requested server name (e.g. SNI in TLS), if any.
    */
   virtual absl::string_view requestedServerName() const PURE;
+
+  /**
+   * Set request server color or other tag property
+   */
+  virtual void setPreferClusterColor(absl::string_view color) PURE;
+
+  virtual absl::string_view getPreferClusterColor() const PURE;
 };
 
 typedef std::unique_ptr<ConnectionSocket> ConnectionSocketPtr;

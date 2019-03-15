@@ -65,7 +65,7 @@ class UpstreamDrainManager;
  * This configuration holds a TLS slot, and therefore it must be destructed
  * on the main thread.
  */
-class Config {
+class Config:Logger::Loggable<Logger::Id::config>  {
 public:
   /**
    * Configuration that can be shared and have an arbitrary lifetime safely.
@@ -153,6 +153,7 @@ private:
   SharedConfigSharedPtr shared_config_;
   std::unique_ptr<const Router::MetadataMatchCriteria> cluster_metadata_match_criteria_;
   Runtime::RandomGenerator& random_generator_;
+  Upstream::ClusterManager& cluster_manager_;
 };
 
 typedef std::shared_ptr<Config> ConfigSharedPtr;

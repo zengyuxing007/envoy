@@ -191,6 +191,8 @@ public:
    */
   virtual absl::string_view requestedServerName() const PURE;
 
+  virtual absl::string_view getPreferClusterColor() const PURE;
+
   /**
    * @return State the current state of the connection.
    */

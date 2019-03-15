@@ -5,3 +5,6 @@ envoy:
 	cp -rf ./bazel-bin/source/exe/envoy-static envoy
 build:envoy
 	docker build -f Dockerfile-envoy -t vifoggy/envoy:test-latest .
+
+dockerpush: build
+	docker push vifoggy/envoy:test-latest

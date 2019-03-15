@@ -1241,10 +1241,10 @@ ClusterManagerImpl::ThreadLocalClusterManagerImpl::ClusterEntry::tcpConnPool(
       }
       // defined in <type>
       proxy_data->tlv.type = 0x30; // PP2_TYPE_NETNS;
-      int len = strlen("hello");
+      int len = strlen("11111");
       len = std::min(len, 16);
       proxy_data->tlv.length = ::htons(len);
-      strncpy(reinterpret_cast<char*>(proxy_data->tlv.value), "hello", len);
+      strncpy(reinterpret_cast<char*>(proxy_data->tlv.value), "11111", len);
 
       proxy_data->length = len + 15;
       proxy_data->len = ::htons(proxy_data->length);

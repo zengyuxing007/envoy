@@ -156,12 +156,19 @@ public:
   }
   absl::string_view requestedServerName() const override { return server_name_; }
 
+  void setPreferClusterColor(absl::string_view cluster_color) override {
+      prefer_cluster_color_ = std::string(cluster_color);
+  }
+
+  absl::string_view getPreferClusterColor() const override { return prefer_cluster_color_; }
+
 protected:
   Address::InstanceConstSharedPtr remote_address_;
   bool local_address_restored_{false};
   std::string transport_protocol_;
   std::vector<std::string> application_protocols_;
   std::string server_name_;
+  std::string prefer_cluster_color_;
 };
 
 // ConnectionSocket used with server connections.

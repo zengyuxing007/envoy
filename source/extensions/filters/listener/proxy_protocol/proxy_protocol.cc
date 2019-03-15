@@ -292,6 +292,9 @@ bool Filter::parseExtensions(int fd) {
       strncpy(trafficMark, reinterpret_cast<const char*>(extensionData->value),
               extensionData->length);
       ENVOY_LOG(debug, "get traffice mark : {}", trafficMark);
+
+      Network::ConnectionSocket& socket = cb_->socket();
+      socket.setPreferClusterColor(trafficMark);
     }
   } else {
     ENVOY_LOG(debug, "unknow type : {}", extensionData->type);

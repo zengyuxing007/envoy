@@ -92,6 +92,7 @@ public:
     return socket_->options();
   }
   absl::string_view requestedServerName() const override { return socket_->requestedServerName(); }
+  absl::string_view getPreferClusterColor() const override { return socket_->getPreferClusterColor(); }
   StreamInfo::StreamInfo& streamInfo() override { return stream_info_; }
   const StreamInfo::StreamInfo& streamInfo() const override { return stream_info_; }
 
