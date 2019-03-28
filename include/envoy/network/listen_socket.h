@@ -291,8 +291,7 @@ struct proxy_protocol_data {
   struct pp2_tlv tlv;
 
   //// extra info
-  uint16_t length;    // little edian
-  bool dest_is_local; //
+  uint16_t length; // little edian
 
   proxy_protocol_data() {
     memcpy(sig, "\x0d\x0a\x0d\x0a\x00\x0d\x0a\x51\x55\x49\x54\x0a", 12);
@@ -300,7 +299,6 @@ struct proxy_protocol_data {
     ver_cmd = 0x21;
 
     length = 0;
-    dest_is_local = false;
   }
 
   int size() { return length + 16; }

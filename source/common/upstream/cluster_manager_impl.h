@@ -52,10 +52,11 @@ public:
   // Upstream::ClusterManagerFactory
   ClusterManagerPtr
   clusterManagerFromProto(const envoy::config::bootstrap::v2::Bootstrap& bootstrap) override;
-  Http::ConnectionPool::InstancePtr
-  allocateConnPool(Event::Dispatcher& dispatcher, HostConstSharedPtr host,
-                   ResourcePriority priority, Http::Protocol protocol,
-                   const Network::ConnectionSocket::OptionsSharedPtr& options) override;
+  Http::ConnectionPool::InstancePtr allocateConnPool(
+      Event::Dispatcher& dispatcher, HostConstSharedPtr host, ResourcePriority priority,
+      Http::Protocol protocol, const Network::ConnectionSocket::OptionsSharedPtr& options,
+      Network::TransportSocketOptionsSharedPtr transport_socket_options,
+      Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data = nullptr) override;
   Tcp::ConnectionPool::InstancePtr allocateTcpConnPool(
       Event::Dispatcher& dispatcher, HostConstSharedPtr host, ResourcePriority priority,
       const Network::ConnectionSocket::OptionsSharedPtr& options,
@@ -188,10 +189,10 @@ public:
     return clusters_map;
   }
   ThreadLocalCluster* get(const std::string& cluster) override;
-  Http::ConnectionPool::Instance* httpConnPoolForCluster(const std::string& cluster,
-                                                         ResourcePriority priority,
-                                                         Http::Protocol protocol,
-                                                         LoadBalancerContext* context) override;
+  Http::ConnectionPool::Instance* httpConnPoolForCluster(
+      const std::string& cluster, ResourcePriority priority, Http::Protocol protocol,
+      LoadBalancerContext* context,
+      Network::TransportSocketOptionsSharedPtr transport_socket_options) override;
   Tcp::ConnectionPool::Instance*
   tcpConnPoolForCluster(const std::string& cluster, ResourcePriority priority,
                         LoadBalancerContext* context,
@@ -285,12 +286,17 @@ private:
                    const LoadBalancerFactorySharedPtr& lb_factory);
       ~ClusterEntry();
 
-      Http::ConnectionPool::Instance* connPool(ResourcePriority priority, Http::Protocol protocol,
-                                               LoadBalancerContext* context);
+      Http::ConnectionPool::Instance*
+      connPool(ResourcePriority priority, Http::Protocol protocol, LoadBalancerContext* context,
+               Network::TransportSocketOptionsSharedPtr transport_socket_options);
 
       Tcp::ConnectionPool::Instance*
       tcpConnPool(ResourcePriority priority, LoadBalancerContext* context,
                   Network::TransportSocketOptionsSharedPtr transport_socket_options);
+
+      Network::ProxyProtocol::ProxyProtocolDataSharedPtr
+      getProxyData(LoadBalancerContext* context,
+                   Network::TransportSocketOptionsSharedPtr transport_socket_options);
 
       // Upstream::ThreadLocalCluster
       const PrioritySet& prioritySet() override { return priority_set_; }

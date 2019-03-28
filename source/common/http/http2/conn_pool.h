@@ -26,7 +26,9 @@ class ConnPoolImpl : public ConnectionPool::Instance, public ConnPoolImplBase {
 public:
   ConnPoolImpl(Event::Dispatcher& dispatcher, Upstream::HostConstSharedPtr host,
                Upstream::ResourcePriority priority,
-               const Network::ConnectionSocket::OptionsSharedPtr& options);
+               const Network::ConnectionSocket::OptionsSharedPtr& options,
+               Network::TransportSocketOptionsSharedPtr transport_socket_options,
+               Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data);
   ~ConnPoolImpl();
 
   // Http::ConnectionPool::Instance
@@ -95,6 +97,8 @@ protected:
   ActiveClientPtr draining_client_;
   std::list<DrainedCb> drained_callbacks_;
   const Network::ConnectionSocket::OptionsSharedPtr socket_options_;
+  Network::TransportSocketOptionsSharedPtr transport_socket_options_;
+  Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_protocol_data_;
 };
 
 /**

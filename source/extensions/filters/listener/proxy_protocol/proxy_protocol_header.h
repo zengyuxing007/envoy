@@ -24,6 +24,9 @@ constexpr uint32_t PROXY_PROTO_V2_AF_INET = 0x1;
 constexpr uint32_t PROXY_PROTO_V2_AF_INET6 = 0x2;
 constexpr uint32_t PROXY_PROTO_V2_AF_UNIX = 0x3;
 
+// remote addr <=> src addr
+// local addr <=> dest addr
+//
 struct WireHeader {
   WireHeader(size_t extensions_length)
       : extensions_length_(extensions_length), protocol_version_(Network::Address::IpVersion::v4),

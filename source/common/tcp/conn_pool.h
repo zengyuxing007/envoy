@@ -108,6 +108,8 @@ protected:
     }
     ConnectionPool::ConnectionState* connectionState() { return conn_state_.get(); }
 
+    bool remoteIsLoopback();
+
     ConnPoolImpl& parent_;
     Upstream::HostDescriptionConstSharedPtr real_host_description_;
     ConnectionWrapperSharedPtr wrapper_;

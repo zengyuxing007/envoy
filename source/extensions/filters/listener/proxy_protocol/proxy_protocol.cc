@@ -88,16 +88,15 @@ void Filter::onReadWorker() {
               proxy_protocol_header_.value().local_address_->ip()->addressAsString(),
               proxy_protocol_header_.value().remote_address_->ip()->addressAsString());
 
+    ENVOY_LOG(debug, "socket localAddress: {}", socket.localAddress()->ip()->addressAsString());
+
+    // socket is  downstream connection socket
     // Only set the local address if it really changed, and mark it as address being restored.
+    //
     if (*proxy_protocol_header_.value().local_address_ != *socket.localAddress()) {
       socket.restoreLocalAddress(proxy_protocol_header_.value().local_address_);
     }
-    if (Network::Utility::isLoopbackAddress(*(socket.remoteAddress()))) {
-      ENVOY_LOG(debug, " remote address: {} is local, no change remote Addr",
-                socket.remoteAddress()->ip()->addressAsString());
-    } else {
-      socket.setRemoteAddress(proxy_protocol_header_.value().remote_address_);
-    }
+    socket.setRemoteAddress(proxy_protocol_header_.value().remote_address_);
   }
 
   // Release the file event so that we do not interfere with the connection read events.
@@ -162,6 +161,9 @@ void Filter::parseV2Header(char* buf) {
         sockaddr_in ra4, la4;
         memset(&ra4, 0, sizeof(ra4));
         memset(&la4, 0, sizeof(la4));
+
+        // remote addr <=> src addr
+        // local addr <=> dest addr
         ra4.sin_family = AF_INET;
         ra4.sin_port = v4->src_port;
         ra4.sin_addr.s_addr = v4->src_addr;

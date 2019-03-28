@@ -8,6 +8,7 @@
 #include "common/http/http1/codec_impl.h"
 #include "common/http/http2/codec_impl.h"
 #include "common/http/utility.h"
+#include "common/network/utility.h"
 
 namespace Envoy {
 namespace Http {
@@ -39,6 +40,21 @@ CodecClient::CodecClient(Type type, Network::ClientConnectionPtr&& connection,
 CodecClient::~CodecClient() {}
 
 void CodecClient::close() { connection_->close(Network::ConnectionCloseType::NoFlush); }
+
+void CodecClient::write(Buffer::Instance& data, bool end_stream) {
+  connection_->write(data, end_stream);
+}
+
+bool CodecClient::remoteIsLoopback() {
+
+  ENVOY_CONN_LOG(debug, "check if remoteAddr is loopback: {}", *connection_,
+                 connection_->remoteAddress()->ip()->addressAsString());
+  auto remoteAddr = connection_->remoteAddress();
+  if (Network::Utility::isLoopbackAddress(*remoteAddr)) {
+    return true;
+  }
+  return false;
+}
 
 void CodecClient::deleteRequest(ActiveRequest& request) {
   connection_->dispatcher().deferredDelete(request.removeFromList(active_requests_));

@@ -32,6 +32,8 @@ static_resources:
                   cluster: service_google
           http_filters:
           - name: envoy.router
+            config:
+                send_proxy_protocol: true
   clusters:
   - name: service_google
     connect_timeout: 0.25s

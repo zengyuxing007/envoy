@@ -7,6 +7,7 @@
 #include "envoy/upstream/upstream.h"
 
 #include "common/buffer/buffer_impl.h"
+#include "common/network/utility.h"
 
 namespace Envoy {
 namespace Tcp {
@@ -210,7 +211,7 @@ void ConnPoolImpl::onConnectionEvent(ActiveConn& conn, Network::ConnectionEvent 
     conn_connect_ms_->complete();
     if (transport_socket_options_->isSendProxyProtocol()) {
       // check the upstream server if localhost
-      if (proxy_protocol_data_->dest_is_local) {
+      if (conn.remoteIsLoopback()) {
         ENVOY_CONN_LOG(debug, "config send proxy protocol,but dest is local ,ignore", *conn.conn_);
       } else {
         /////send proxy protocol data
@@ -421,6 +422,17 @@ ConnPoolImpl::ActiveConn::~ActiveConn() {
   parent_.host_->cluster().resourceManager(parent_.priority_).connections().dec();
 
   parent_.onConnDestroyed(*this);
+}
+
+bool ConnPoolImpl::ActiveConn::remoteIsLoopback() {
+
+  ENVOY_CONN_LOG(debug, "check if remoteAddr is loopback: {}", *conn_,
+                 conn_->remoteAddress()->ip()->addressAsString());
+  auto remoteAddr = conn_->remoteAddress();
+  if (Network::Utility::isLoopbackAddress(*remoteAddr)) {
+    return true;
+  }
+  return false;
 }
 
 void ConnPoolImpl::ActiveConn::onConnectTimeout() {

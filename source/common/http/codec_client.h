@@ -63,6 +63,16 @@ public:
   }
 
   /**
+   */
+
+  void write(Buffer::Instance& data, bool end_stream);
+
+  /**
+   * check connection remote addr if is loopback
+   * */
+  bool remoteIsLoopback();
+
+  /**
    * Close the underlying network connection. This is immediate and will not attempt to flush any
    * pending write data.
    */

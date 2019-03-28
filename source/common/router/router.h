@@ -99,12 +99,13 @@ public:
                Stats::Scope& scope, Upstream::ClusterManager& cm, Runtime::Loader& runtime,
                Runtime::RandomGenerator& random, ShadowWriterPtr&& shadow_writer,
                bool emit_dynamic_stats, bool start_child_span, bool suppress_envoy_headers,
-               TimeSource& time_source, Http::Context& http_context)
+               TimeSource& time_source, Http::Context& http_context,
+               bool is_send_proxy_protocol = false)
       : scope_(scope), local_info_(local_info), cm_(cm), runtime_(runtime),
         random_(random), stats_{ALL_ROUTER_STATS(POOL_COUNTER_PREFIX(scope, stat_prefix))},
         emit_dynamic_stats_(emit_dynamic_stats), start_child_span_(start_child_span),
         suppress_envoy_headers_(suppress_envoy_headers), http_context_(http_context),
-        shadow_writer_(std::move(shadow_writer)), time_source_(time_source) {}
+        shadow_writer_(std::move(shadow_writer)), time_source_(time_source),is_send_proxy_protocol_(is_send_proxy_protocol) {}
 
   FilterConfig(const std::string& stat_prefix, Server::Configuration::FactoryContext& context,
                ShadowWriterPtr&& shadow_writer,
@@ -113,7 +114,7 @@ public:
                      context.runtime(), context.random(), std::move(shadow_writer),
                      PROTOBUF_GET_WRAPPED_OR_DEFAULT(config, dynamic_stats, true),
                      config.start_child_span(), config.suppress_envoy_headers(),
-                     context.api().timeSource(), context.httpContext()) {
+                     context.api().timeSource(), context.httpContext(),config.send_proxy_protocol()) {
     for (const auto& upstream_log : config.upstream_log()) {
       upstream_logs_.push_back(AccessLog::AccessLogFactory::fromProto(upstream_log, context));
     }
@@ -121,6 +122,8 @@ public:
 
   ShadowWriter& shadowWriter() { return *shadow_writer_; }
   TimeSource& timeSource() { return time_source_; }
+
+  bool isSendProxyProtocol() const { return is_send_proxy_protocol_; }
 
   Stats::Scope& scope_;
   const LocalInfo::LocalInfo& local_info_;
@@ -137,6 +140,7 @@ public:
 private:
   ShadowWriterPtr shadow_writer_;
   TimeSource& time_source_;
+  bool is_send_proxy_protocol_;
 };
 
 typedef std::shared_ptr<FilterConfig> FilterConfigSharedPtr;

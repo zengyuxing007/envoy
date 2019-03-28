@@ -637,9 +637,10 @@ ThreadLocalCluster* ClusterManagerImpl::get(const std::string& cluster) {
   }
 }
 
-Http::ConnectionPool::Instance*
-ClusterManagerImpl::httpConnPoolForCluster(const std::string& cluster, ResourcePriority priority,
-                                           Http::Protocol protocol, LoadBalancerContext* context) {
+Http::ConnectionPool::Instance* ClusterManagerImpl::httpConnPoolForCluster(
+    const std::string& cluster, ResourcePriority priority, Http::Protocol protocol,
+    LoadBalancerContext* context,
+    Network::TransportSocketOptionsSharedPtr transport_socket_options) {
   ThreadLocalClusterManagerImpl& cluster_manager = tls_->getTyped<ThreadLocalClusterManagerImpl>();
 
   auto entry = cluster_manager.thread_local_clusters_.find(cluster);
@@ -648,7 +649,7 @@ ClusterManagerImpl::httpConnPoolForCluster(const std::string& cluster, ResourceP
   }
 
   // Select a host and create a connection pool for it if it does not already exist.
-  return entry->second->connPool(priority, protocol, context);
+  return entry->second->connPool(priority, protocol, context, transport_socket_options);
 }
 
 Tcp::ConnectionPool::Instance* ClusterManagerImpl::tcpConnPoolForCluster(
@@ -1124,7 +1125,8 @@ ClusterManagerImpl::ThreadLocalClusterManagerImpl::ClusterEntry::~ClusterEntry()
 
 Http::ConnectionPool::Instance*
 ClusterManagerImpl::ThreadLocalClusterManagerImpl::ClusterEntry::connPool(
-    ResourcePriority priority, Http::Protocol protocol, LoadBalancerContext* context) {
+    ResourcePriority priority, Http::Protocol protocol, LoadBalancerContext* context,
+    Network::TransportSocketOptionsSharedPtr transport_socket_options) {
   HostConstSharedPtr host = lb_->chooseHost(context);
   if (!host) {
     ENVOY_LOG(debug, "no healthy host for HTTP connection pool");
@@ -1152,18 +1154,107 @@ ClusterManagerImpl::ThreadLocalClusterManagerImpl::ClusterEntry::connPool(
 
   ConnPoolsContainer& container = *parent_.getHttpConnPoolsContainer(host, true);
 
+  Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data =
+      getProxyData(context, transport_socket_options);
+
   // Note: to simplify this, we assume that the factory is only called in the scope of this
   // function. Otherwise, we'd need to capture a few of these variables by value.
   ConnPoolsContainer::ConnPools::OptPoolRef pool = container.pools_->getPool(hash_key, [&]() {
     return parent_.parent_.factory_.allocateConnPool(
         parent_.thread_local_dispatcher_, host, priority, protocol,
-        have_options ? context->downstreamConnection()->socketOptions() : nullptr);
+        have_options ? context->downstreamConnection()->socketOptions() : nullptr,
+        transport_socket_options, proxy_data);
   });
   // The Connection Pool tracking is a work in progress. We plan for it to eventually have the
   // ability to fail, but until we add upper layer handling for failures, it should not. So, assert
   // that we don't accidentally add conditions that could allow it to fail.
   ASSERT(pool.has_value(), "Pool allocation should never fail");
   return &(pool.value().get());
+}
+
+Network::ProxyProtocol::ProxyProtocolDataSharedPtr
+ClusterManagerImpl::ThreadLocalClusterManagerImpl::ClusterEntry::getProxyData(
+    LoadBalancerContext* context,
+    Network::TransportSocketOptionsSharedPtr transport_socket_options) {
+  if (!context)
+    return nullptr;
+
+  /// proxy protocol data
+  const Network::Connection* downStreamConn = context->downstreamConnection();
+  Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data =
+      std::make_shared<Network::ProxyProtocol::proxy_protocol_data>();
+
+  //
+  if (downStreamConn) {
+    auto destAddr = downStreamConn->localAddress().get();
+    auto srcAddr = downStreamConn->remoteAddress().get();
+    if (srcAddr && destAddr) {
+      auto srcIp = srcAddr->ip();
+      auto srcPort = srcIp->port();
+      auto destIp = destAddr->ip();
+      auto destPort = destIp->port();
+
+      ENVOY_LOG(debug, "proxy protocol: srcIp: {}, destIp: {}", srcIp->addressAsString(),
+                destIp->addressAsString());
+
+      if (srcIp->version() != destIp->version()) {
+        // error
+        ENVOY_LOG(error, "proxy protocol-- srcIP version != destIp version");
+      }
+      if (srcIp->version() == Network::Address::IpVersion::v4) {
+        proxy_data->fam = 0x11; // TCP over IPv4
+        proxy_data->addr.ip4.src_addr = srcIp->ipv4()->address();
+        proxy_data->addr.ip4.src_port = srcPort;
+        proxy_data->addr.ip4.dst_addr = destIp->ipv4()->address();
+        proxy_data->addr.ip4.dst_port = destPort;
+
+        proxy_data->length += SIZEOF_IPV4;
+      } else {
+        // ipv6
+        ENVOY_LOG(error, "proxy protocol now unsupport ipv6 ");
+      }
+    }
+
+    std::string send_color("");
+
+    // get the downstream color
+    auto down_stream_color = downStreamConn->getPreferClusterColor();
+    auto listener_config_color = transport_socket_options->getDefaultDownStreamColor();
+
+    if (!down_stream_color.empty()) {
+      send_color = down_stream_color.data();
+      ENVOY_LOG(debug, "using downStream connection color: {}", down_stream_color);
+    } else if (!listener_config_color.empty()) {
+      send_color = listener_config_color;
+      ENVOY_LOG(debug, "using listener config default color: {}", send_color);
+    }
+
+    if (!send_color.empty()) {
+      // add extesion color property
+      // defined in <type>
+      proxy_data->tlv.type = 0x30; // PP2_TYPE_NETNS;
+
+      int len = send_color.length();
+      len = std::min(len, 16);
+      proxy_data->tlv.length = ::htons(len);
+
+      strncpy(reinterpret_cast<char*>(proxy_data->tlv.value), send_color.data(), len);
+
+      proxy_data->length += len + PP2_TLV_HEADER_SIZE;
+
+      uint8_t* proxy_data_buf = reinterpret_cast<uint8_t*>(proxy_data.get());
+      ////
+      memmove(&proxy_data_buf[28], &(proxy_data->tlv), sizeof(Network::ProxyProtocol::pp2_tlv));
+    } else {
+      ENVOY_LOG(debug, "proxy protocol : not color data--");
+    }
+
+    proxy_data->len = ::htons(proxy_data->length);
+
+    return proxy_data;
+  }
+
+  return nullptr;
 }
 
 Tcp::ConnectionPool::Instance*
@@ -1202,82 +1293,8 @@ ClusterManagerImpl::ThreadLocalClusterManagerImpl::ClusterEntry::tcpConnPool(
   TcpConnPoolsContainer& container = parent_.host_tcp_conn_pool_map_[host];
   if (!container.pools_[hash_key]) {
 
-    /// proxy protocol data
-    const Network::Connection* downStreamConn = context->downstreamConnection();
     Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data =
-        std::make_shared<Network::ProxyProtocol::proxy_protocol_data>();
-
-    if (downStreamConn) {
-      auto srcAddr = downStreamConn->localAddress().get();
-      auto remoteAddr = downStreamConn->remoteAddress().get();
-      if (srcAddr && remoteAddr) {
-        auto srcIp = srcAddr->ip();
-        auto srcPort = srcIp->port();
-        auto remoteIp = remoteAddr->ip();
-        auto remotePort = remoteIp->port();
-
-        ENVOY_LOG(debug, "proxy protocol: srcIp: {}, remoteIp: {}", srcIp->addressAsString(),
-                  remoteIp->addressAsString());
-
-        if (Network::Utility::isLoopbackAddress(*remoteAddr)) {
-          ENVOY_LOG(debug, "proxy protocol-- remote addr is loopback");
-          proxy_data->dest_is_local = true;
-        }
-
-        if (srcIp->version() != remoteIp->version()) {
-          // error
-          ENVOY_LOG(error, "proxy protocol-- srcIP version != remoteIp version");
-        }
-        if (srcIp->version() == Network::Address::IpVersion::v4) {
-          proxy_data->fam = 0x11; // TCP over IPv4
-          proxy_data->addr.ip4.src_addr = srcIp->ipv4()->address();
-          proxy_data->addr.ip4.src_port = srcPort;
-          proxy_data->addr.ip4.dst_addr = remoteIp->ipv4()->address();
-          proxy_data->addr.ip4.dst_port = remotePort;
-
-          proxy_data->length += SIZEOF_IPV4;
-        } else {
-          // ipv6
-          ENVOY_LOG(error, "proxy protocol now unsupport ipv6 ");
-        }
-      }
-
-      std::string send_color("");
-
-      // get the downstream color
-      auto down_stream_color = downStreamConn->getPreferClusterColor();
-      auto listener_config_color = transport_socket_options->getDefaultDownStreamColor();
-
-      if (!down_stream_color.empty()) {
-        send_color = down_stream_color.data();
-        ENVOY_LOG(debug, "using downStream connection color: {}", down_stream_color);
-      } else if (!listener_config_color.empty()) {
-        send_color = listener_config_color;
-        ENVOY_LOG(debug, "using listener config default color: {}", send_color);
-      }
-
-      if (!send_color.empty()) {
-        // add extesion color property
-        // defined in <type>
-        proxy_data->tlv.type = 0x30; // PP2_TYPE_NETNS;
-
-        int len = send_color.length();
-        len = std::min(len, 16);
-        proxy_data->tlv.length = ::htons(len);
-
-        strncpy(reinterpret_cast<char*>(proxy_data->tlv.value), send_color.data(), len);
-
-        proxy_data->length += len + PP2_TLV_HEADER_SIZE;
-
-        uint8_t* proxy_data_buf = reinterpret_cast<uint8_t*>(proxy_data.get());
-        ////
-        memmove(&proxy_data_buf[28], &(proxy_data->tlv), sizeof(Network::ProxyProtocol::pp2_tlv));
-      } else {
-        ENVOY_LOG(debug, "proxy protocol : not color data--");
-      }
-
-      proxy_data->len = ::htons(proxy_data->length);
-    }
+        getProxyData(context, transport_socket_options);
 
     container.pools_[hash_key] = parent_.parent_.factory_.allocateTcpConnPool(
         parent_.thread_local_dispatcher_, host, priority,
@@ -1297,14 +1314,20 @@ ClusterManagerPtr ProdClusterManagerFactory::clusterManagerFromProto(
 
 Http::ConnectionPool::InstancePtr ProdClusterManagerFactory::allocateConnPool(
     Event::Dispatcher& dispatcher, HostConstSharedPtr host, ResourcePriority priority,
-    Http::Protocol protocol, const Network::ConnectionSocket::OptionsSharedPtr& options) {
+    Http::Protocol protocol, const Network::ConnectionSocket::OptionsSharedPtr& options,
+    Network::TransportSocketOptionsSharedPtr transport_socket_options,
+    Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data) {
+
+  // ENVOY_LOG(debug,"allocateConnPool HTTP2 or HTTP1 ");
   if (protocol == Http::Protocol::Http2 &&
       runtime_.snapshot().featureEnabled("upstream.use_http2", 100)) {
-    return Http::ConnectionPool::InstancePtr{
-        new Http::Http2::ProdConnPoolImpl(dispatcher, host, priority, options)};
+    // ENVOY_LOG(debug,"using http2");
+    return Http::ConnectionPool::InstancePtr{new Http::Http2::ProdConnPoolImpl(
+        dispatcher, host, priority, options, transport_socket_options, proxy_data)};
   } else {
-    return Http::ConnectionPool::InstancePtr{
-        new Http::Http1::ProdConnPoolImpl(dispatcher, host, priority, options)};
+    // ENVOY_LOG(debug,"using http1");
+    return Http::ConnectionPool::InstancePtr{new Http::Http1::ProdConnPoolImpl(
+        dispatcher, host, priority, options, transport_socket_options, proxy_data)};
   }
 }
 

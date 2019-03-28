@@ -17,9 +17,12 @@ namespace Http2 {
 
 ConnPoolImpl::ConnPoolImpl(Event::Dispatcher& dispatcher, Upstream::HostConstSharedPtr host,
                            Upstream::ResourcePriority priority,
-                           const Network::ConnectionSocket::OptionsSharedPtr& options)
+                           const Network::ConnectionSocket::OptionsSharedPtr& options,
+                           Network::TransportSocketOptionsSharedPtr transport_socket_options,
+                           Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data)
     : ConnPoolImplBase(std::move(host), std::move(priority)), dispatcher_(dispatcher),
-      socket_options_(options) {}
+      socket_options_(options), transport_socket_options_(transport_socket_options),
+      proxy_protocol_data_(proxy_data) {}
 
 ConnPoolImpl::~ConnPoolImpl() {
   if (primary_client_) {
@@ -185,6 +188,27 @@ void ConnPoolImpl::onConnectionEvent(ActiveClient& client, Network::ConnectionEv
     conn_connect_ms_->complete();
 
     client.upstream_ready_ = true;
+
+    // TODO zyx
+    ENVOY_CONN_LOG(debug, "connection ok--- zyx", *client.client_);
+    if (transport_socket_options_->isSendProxyProtocol()) {
+      // check the upstream server if localhost
+      // if (proxy_protocol_data_->dest_is_local) {
+      if (client.client_->remoteIsLoopback()) {
+        ENVOY_CONN_LOG(debug, "config send proxy protocol,but dest is local ,ignore",
+                       *client.client_);
+      } else {
+        /////send proxy protocol data
+        Buffer::InstancePtr proxyDataPtr = std::make_unique<Buffer::OwnedImpl>();
+        proxyDataPtr->add(reinterpret_cast<void*>(proxy_protocol_data_.get()),
+                          proxy_protocol_data_->size());
+        client.client_->write(*proxyDataPtr, false);
+        ENVOY_CONN_LOG(debug, "connection ok,send proxy protocol data", *client.client_);
+      }
+    } else {
+      ENVOY_CONN_LOG(debug, "proxy protocol not config to send", *client.client_);
+    }
+
     onUpstreamReady();
   }
 

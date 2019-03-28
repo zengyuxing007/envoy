@@ -32,7 +32,9 @@ class ConnPoolImpl : public ConnectionPool::Instance, public ConnPoolImplBase {
 public:
   ConnPoolImpl(Event::Dispatcher& dispatcher, Upstream::HostConstSharedPtr host,
                Upstream::ResourcePriority priority,
-               const Network::ConnectionSocket::OptionsSharedPtr& options);
+               const Network::ConnectionSocket::OptionsSharedPtr& options,
+               Network::TransportSocketOptionsSharedPtr transport_socket_options,
+               Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data);
 
   ~ConnPoolImpl();
 
@@ -119,6 +121,8 @@ protected:
   std::list<ActiveClientPtr> busy_clients_;
   std::list<DrainedCb> drained_callbacks_;
   const Network::ConnectionSocket::OptionsSharedPtr socket_options_;
+  Network::TransportSocketOptionsSharedPtr transport_socket_options_;
+  Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_protocol_data_;
   Event::TimerPtr upstream_ready_timer_;
   bool upstream_ready_enabled_{false};
 };
@@ -130,8 +134,10 @@ class ProdConnPoolImpl : public ConnPoolImpl {
 public:
   ProdConnPoolImpl(Event::Dispatcher& dispatcher, Upstream::HostConstSharedPtr host,
                    Upstream::ResourcePriority priority,
-                   const Network::ConnectionSocket::OptionsSharedPtr& options)
-      : ConnPoolImpl(dispatcher, host, priority, options) {}
+                   const Network::ConnectionSocket::OptionsSharedPtr& options,
+                   Network::TransportSocketOptionsSharedPtr transport_socket_options,
+                   Network::ProxyProtocol::ProxyProtocolDataSharedPtr proxy_data)
+      : ConnPoolImpl(dispatcher, host, priority, options, transport_socket_options, proxy_data) {}
 
   // ConnPoolImpl
   CodecClientPtr createCodecClient(Upstream::Host::CreateConnectionData& data) override;
