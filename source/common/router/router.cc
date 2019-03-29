@@ -271,6 +271,21 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::HeaderMap& headers, bool e
   // that get handled by earlier filters.
   config_.stats_.rq_total_.inc();
 
+  // check if have set color cookies: TODO
+  // const std::string& color_cookie_name = config_.getColorCookieName();
+
+  // header
+  const Http::HeaderEntry* color_header;
+  if (headers.lookup(Http::Headers::get().EnvoyPreferClusterColor, &color_header) ==
+      Http::HeaderMap::Lookup::Found) {
+
+    ENVOY_STREAM_LOG(debug, "Found color header: {}", *callbacks_, color_header->value().c_str());
+    auto conn = const_cast<Network::Connection*>(downstreamConnection());
+    conn->setPreferClusterColor(color_header->value().c_str());
+  } else {
+    ENVOY_STREAM_LOG(debug, "color header name:  not Found", *callbacks_);
+  }
+
   // Determine if there is a route entry or a direct response for the request.
   route_ = callbacks_->route();
   if (!route_) {
@@ -303,6 +318,8 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::HeaderMap& headers, bool e
   }
 
   //// 路由判断---
+  /// get prefer color cluster
+  ///
 
   // A route entry matches for the request.
   route_entry_ = route_->routeEntry();

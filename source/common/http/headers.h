@@ -64,6 +64,7 @@ public:
   const LowerCaseString EnvoyUpstreamServiceTime{"x-envoy-upstream-service-time"};
   const LowerCaseString EnvoyUpstreamHealthCheckedCluster{"x-envoy-upstream-healthchecked-cluster"};
   const LowerCaseString EnvoyDecoratorOperation{"x-envoy-decorator-operation"};
+  const LowerCaseString EnvoyPreferClusterColor{"x-envoy-prefer-cluster-color"};
   const LowerCaseString Etag{"etag"};
   const LowerCaseString Expect{"expect"};
   const LowerCaseString ForwardedClientCert{"x-forwarded-client-cert"};

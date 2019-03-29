@@ -95,6 +95,11 @@ public:
   absl::string_view getPreferClusterColor() const override {
     return socket_->getPreferClusterColor();
   }
+
+  void setPreferClusterColor(absl::string_view prefer_cluster_color) override {
+    socket_->setPreferClusterColor(prefer_cluster_color);
+  }
+
   StreamInfo::StreamInfo& streamInfo() override { return stream_info_; }
   const StreamInfo::StreamInfo& streamInfo() const override { return stream_info_; }
 

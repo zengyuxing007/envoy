@@ -39,4 +39,6 @@ message Router {
 
   // for extension
   bool send_proxy_protocol = 50;
+
+  string color_cookie_name = 51;
 }

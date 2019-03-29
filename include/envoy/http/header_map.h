@@ -279,6 +279,7 @@ private:
   HEADER_FUNC(EnvoyUpstreamRequestTimeoutAltResponse)                                              \
   HEADER_FUNC(EnvoyUpstreamRequestTimeoutMs)                                                       \
   HEADER_FUNC(EnvoyUpstreamServiceTime)                                                            \
+  HEADER_FUNC(EnvoyPreferClusterColor)                                                             \
   HEADER_FUNC(Etag)                                                                                \
   HEADER_FUNC(Expect)                                                                              \
   HEADER_FUNC(ForwardedClientCert)                                                                 \
