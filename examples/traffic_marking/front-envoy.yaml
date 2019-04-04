@@ -24,7 +24,7 @@ static_resources:
               - "*"
               routes:
               - match:
-                  prefix: "/service/1"
+                  prefix: "/"
                 route:
                   cluster: service1
           http_filters:

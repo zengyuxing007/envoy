@@ -73,5 +73,54 @@ services:
       - "18082:18080"
       - "28083:28081"
 
+  mysql-envoy-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile-mysql-proxy
+    volumes:
+      - ./mysql-envoy-proxy.yaml:/etc/mysql-envoy-proxy.yaml
+    networks:
+      envoymesh:
+         aliases:
+           - mysql-envoy-proxy
+    expose:
+      - "13306"
+    ports:
+      - "13306:13306"
+  
+  mysql:
+   image: mysql:latest
+   container_name: mysql-container
+   ports:
+    - 33306:3306
+   volumes:
+    - ./person.sql:/docker-entrypoint-initdb.d/person.sql
+   networks:
+      envoymesh:
+        aliases:
+          - mysql
+   environment:
+    MYSQL_ROOT_PASSWORD: 
+    MYSQL_DATABASE: person
+    MYSQL_USER: root
+    MYSQL_PASSWORD: root123
+
+  mysql-green:
+   image: mysql:latest
+   container_name: mysql-green-container
+   ports:
+    - 23306:3306
+   volumes:
+    - ./person-green.sql:/docker-entrypoint-initdb.d/person-green.sql
+   networks:
+      envoymesh:
+        aliases:
+          - mysql-green
+   environment:
+    MYSQL_ROOT_PASSWORD: 
+    MYSQL_DATABASE: person
+    MYSQL_USER: root
+    MYSQL_PASSWORD: root123
+        
 networks:
   envoymesh: {}

@@ -4,6 +4,7 @@ import os
 import requests
 import socket
 import sys
+import MySQLdb
 
 app = Flask(__name__)
 
@@ -30,18 +31,25 @@ def hello(service_number):
                                   socket.gethostbyname(socket.gethostname())))
 
 
-@app.route('/trace/<service_number>')
-def trace(service_number):
-  headers = {}
-  # call service 2 from service 1
-  if int(os.environ['SERVICE_NAME']) == 1:
-    for header in TRACE_HEADERS_TO_PROPAGATE:
-      if header in request.headers:
-        headers[header] = request.headers[header]
-    ret = requests.get("http://localhost:9000/trace/2", headers=headers)
-  return ('Hello from behind Envoy (service {})! hostname: {} resolved'
-          'hostname: {}\n'.format(os.environ['SERVICE_NAME'], socket.gethostname(),
-                                  socket.gethostbyname(socket.gethostname())))
+@app.route('/person_info/<id>')
+def get_person_info(id):
+  db = MySQLdb.connect("mysql-envoy-proxy", "root", "root123", "person", charset='utf8',port=13306 )
+  cursor = db.cursor()
+  sql = "SELECT * FROM person WHERE id = %u" % (id)
+  try:
+    cursor.execute(sql)
+    results = cursor.fetchall()
+    for row in results:
+      fname = row[0]
+      lname = row[1]
+      age = row[2]
+      sex = row[3]
+      income = row[4]
+      return ('Person <{}> information: firstName: {}, lastName: {}, age: {},'
+                  'sex: {}, income: {}\n'.format(id,fname,lname,age,sex,income))
+  except:
+     return ("Error: unable to fetch data")
+
 
 
 if __name__ == "__main__":
