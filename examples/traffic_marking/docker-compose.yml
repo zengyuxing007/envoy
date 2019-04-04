@@ -1,0 +1,77 @@
+version: '2'
+services:
+
+  front-envoy:
+    build:
+      context: .
+      dockerfile: Dockerfile-frontenvoy
+    volumes:
+      - ./front-envoy.yaml:/etc/front-envoy.yaml
+    networks:
+      - envoymesh
+    expose:
+      - "7001"
+      - "18001"
+    ports:
+      - "7001:7001"
+      - "18001:18001"
+
+  service1:
+    build:
+      context: .
+      dockerfile: Dockerfile-service
+    volumes:
+      - ./service-envoy.yaml:/etc/service-envoy.yaml
+    networks:
+      envoymesh:
+        aliases:
+          - service1
+    environment:
+      - SERVICE_NAME=simple
+    expose:
+      - "18080"
+      - "28081"
+    ports:
+      - "18080:18080"
+      - "28081:28081"
+
+  service1-green:
+    build:
+      context: .
+      dockerfile: Dockerfile-service
+    volumes:
+      - ./service-envoy.yaml:/etc/service-envoy.yaml
+    networks:
+      envoymesh:
+        aliases:
+          - service1-green
+    environment:
+      - SERVICE_NAME=green
+    expose:
+      - "18081"
+      - "28082"
+    ports:
+      - "18081:18080"
+      - "28082:28081"
+
+  service1-red:
+    build:
+      context: .
+      dockerfile: Dockerfile-service
+    volumes:
+      - ./service-envoy.yaml:/etc/service-envoy.yaml
+    networks:
+      envoymesh:
+        aliases:
+          - service1-red
+    environment:
+      - SERVICE_NAME=red
+    expose:
+      - "18082"
+      - "28083"
+    ports:
+      - "18082:18080"
+      - "28083:28081"
+
+networks:
+  envoymesh: {}
