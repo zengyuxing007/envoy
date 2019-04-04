@@ -48,7 +48,7 @@ def get_person_info(id):
       return ('Person <{}> information: firstName: {}, lastName: {}, age: {},'
               'sex: {}, income: {}\n'.format(id, fname, lname, age, sex, income))
   except:
-      return ("Error: unable to fetch data")
+    return ("Error: unable to fetch data")
 
 
 
