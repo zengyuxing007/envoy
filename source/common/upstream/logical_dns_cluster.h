@@ -111,12 +111,14 @@ private:
     void setHealthCheckAddress(Network::Address::InstanceConstSharedPtr) override {}
     uint32_t priority() const override { return locality_lb_endpoint_.priority(); }
     void priority(uint32_t priority) override { locality_lb_endpoint_.set_priority(priority); }
+    const std::string& color() const override { return color_; }
     Network::Address::InstanceConstSharedPtr address_;
     HostConstSharedPtr logical_host_;
     const std::shared_ptr<envoy::api::v2::core::Metadata> metadata_;
     Network::Address::InstanceConstSharedPtr health_check_address_;
     envoy::api::v2::endpoint::LocalityLbEndpoints locality_lb_endpoint_;
     const envoy::api::v2::endpoint::LbEndpoint& lb_endpoint_;
+    std::string color_;
   };
 
   struct PerThreadCurrentHostData : public ThreadLocal::ThreadLocalObject {

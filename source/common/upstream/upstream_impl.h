@@ -79,7 +79,12 @@ public:
         metadata_(std::make_shared<envoy::api::v2::core::Metadata>(metadata)),
         locality_(locality), stats_{ALL_HOST_STATS(POOL_COUNTER(stats_store_),
                                                    POOL_GAUGE(stats_store_))},
-        priority_(priority) {}
+        priority_(priority) {
+
+    auto cluster_metadata = cluster->metadata();
+    color_ =
+        Config::Metadata::metadataValue(cluster_metadata, "service_color", "value").string_value();
+  }
 
   // Upstream::HostDescription
   bool canary() const override { return canary_; }
@@ -134,6 +139,8 @@ public:
   uint32_t priority() const override { return priority_; }
   void priority(uint32_t priority) override { priority_ = priority; }
 
+  const std::string& color() const override { return color_; }
+
 protected:
   ClusterInfoConstSharedPtr cluster_;
   const std::string hostname_;
@@ -148,6 +155,7 @@ protected:
   Outlier::DetectorHostMonitorPtr outlier_detector_;
   HealthCheckHostMonitorPtr health_checker_;
   std::atomic<uint32_t> priority_;
+  std::string color_;
 };
 
 /**

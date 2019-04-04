@@ -637,19 +637,36 @@ ThreadLocalCluster* ClusterManagerImpl::get(const std::string& cluster) {
   }
 }
 
+/// http 连接池
 Http::ConnectionPool::Instance* ClusterManagerImpl::httpConnPoolForCluster(
     const std::string& cluster, ResourcePriority priority, Http::Protocol protocol,
     LoadBalancerContext* context,
     Network::TransportSocketOptionsSharedPtr transport_socket_options) {
+
+  auto color = context->downstreamConnection()->getPreferClusterColor();
   ThreadLocalClusterManagerImpl& cluster_manager = tls_->getTyped<ThreadLocalClusterManagerImpl>();
 
-  auto entry = cluster_manager.thread_local_clusters_.find(cluster);
-  if (entry == cluster_manager.thread_local_clusters_.end()) {
-    return nullptr;
+  std::unordered_map<std::string, ThreadLocalClusterManagerImpl::ClusterEntryPtr>::const_iterator
+      entry;
+
+  if (!color.empty()) {
+    auto color_cluster = cluster + "|" + color.data();
+    ENVOY_LOG(debug, "httpConnPoolForCluster:: try to found color cluster: {}", color_cluster);
+    entry = cluster_manager.thread_local_clusters_.find(color_cluster);
   }
 
-  // Select a host and create a connection pool for it if it does not already exist.
-  return entry->second->connPool(priority, protocol, context, transport_socket_options);
+  if (color.empty() || entry == cluster_manager.thread_local_clusters_.end()) {
+    entry = cluster_manager.thread_local_clusters_.find(cluster);
+    if (entry == cluster_manager.thread_local_clusters_.end()) {
+      return nullptr;
+    }
+    // Select a host and create a connection pool for it if it does not already exist.
+    return entry->second->connPool(priority, protocol, context, transport_socket_options);
+  } else {
+    // color cluster found
+    ENVOY_LOG(debug, "found color cluster: {}", entry->second->info()->name());
+    return entry->second->connPool(priority, protocol, context, transport_socket_options);
+  }
 }
 
 Tcp::ConnectionPool::Instance* ClusterManagerImpl::tcpConnPoolForCluster(
@@ -1123,15 +1140,23 @@ ClusterManagerImpl::ThreadLocalClusterManagerImpl::ClusterEntry::~ClusterEntry()
   }
 }
 
+/// 选择endpoints
 Http::ConnectionPool::Instance*
 ClusterManagerImpl::ThreadLocalClusterManagerImpl::ClusterEntry::connPool(
     ResourcePriority priority, Http::Protocol protocol, LoadBalancerContext* context,
     Network::TransportSocketOptionsSharedPtr transport_socket_options) {
+
+  // lb 选择具体的endpoints
+
+  ENVOY_LOG(debug, "ClusterEntry: {}-- choost Host", info()->name());
+
   HostConstSharedPtr host = lb_->chooseHost(context);
   if (!host) {
     ENVOY_LOG(debug, "no healthy host for HTTP connection pool");
     cluster_info_->stats().upstream_cx_none_healthy_.inc();
     return nullptr;
+  } else {
+    ENVOY_LOG(debug, "choose Host {},color: {}", host->hostname(), host->color());
   }
 
   // Inherit socket options from downstream connection, if set.

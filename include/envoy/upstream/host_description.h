@@ -123,6 +123,10 @@ public:
    * Set the current priority.
    */
   virtual void priority(uint32_t) PURE;
+  /**
+   *    color
+   */
+  virtual const std::string& color() const PURE;
 };
 
 typedef std::shared_ptr<const HostDescription> HostDescriptionConstSharedPtr;

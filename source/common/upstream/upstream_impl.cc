@@ -1397,7 +1397,8 @@ void StrictDnsClusterImpl::ResolveTarget::startResolve() {
       dns_address_, parent_.dns_lookup_family_,
       [this](const std::list<Network::Address::InstanceConstSharedPtr>&& address_list) -> void {
         active_query_ = nullptr;
-        ENVOY_LOG(trace, "async DNS resolution complete for {}", dns_address_);
+        ENVOY_LOG(trace, "async DNS resolution complete for {},address size: {}", dns_address_,
+                  address_list.size());
         parent_.info_->stats().update_success_.inc();
 
         std::unordered_map<std::string, HostSharedPtr> updated_hosts;
@@ -1413,6 +1414,9 @@ void StrictDnsClusterImpl::ResolveTarget::startResolve() {
               lb_endpoint_.metadata(), lb_endpoint_.load_balancing_weight().value(),
               locality_lb_endpoint_.locality(), lb_endpoint_.endpoint().health_check_config(),
               locality_lb_endpoint_.priority(), lb_endpoint_.health_status()));
+
+          ENVOY_LOG(trace, "StrictDnsClusterImpl: newHostImpl,host {},port: {}", dns_address_,
+                    port_);
         }
 
         HostVector hosts_added;

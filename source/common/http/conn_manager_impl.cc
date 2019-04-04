@@ -1066,6 +1066,7 @@ void ConnectionManagerImpl::startDrainSequence() {
   drain_timer_->enableTimer(config_.drainTimeout());
 }
 
+/// 获取对应path 的路由 cluster
 void ConnectionManagerImpl::ActiveStream::refreshCachedRoute() {
   Router::RouteConstSharedPtr route = snapped_route_config_->route(*request_headers_, stream_id_);
   stream_info_.route_entry_ = route ? route->routeEntry() : nullptr;

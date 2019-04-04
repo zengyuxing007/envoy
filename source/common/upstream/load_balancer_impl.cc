@@ -421,6 +421,7 @@ bool ZoneAwareLoadBalancerBase::earlyExitNonLocalityRouting() {
   return false;
 }
 
+//选择endpoints
 HostConstSharedPtr LoadBalancerBase::chooseHost(LoadBalancerContext* context) {
   HostConstSharedPtr host;
   const size_t max_attempts = context ? context->hostSelectionRetryCount() + 1 : 1;
@@ -572,6 +573,7 @@ ZoneAwareLoadBalancerBase::hostSourceToUse(LoadBalancerContext* context) {
   return hosts_source;
 }
 
+/// 根据hostsource type 返回对应的host 集合
 const HostVector& ZoneAwareLoadBalancerBase::hostSourceToHosts(HostsSource hosts_source) {
   const HostSet& host_set = *priority_set_.hostSetsPerPriority()[hosts_source.priority_];
   switch (hosts_source.source_type_) {

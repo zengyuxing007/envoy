@@ -120,7 +120,6 @@ Config::Config(const envoy::config::filter::network::tcp_proxy::v2::TcpProxy& co
 }
 
 /// 这里的connection 是 downstream connection
-///
 const std::string& Config::getRegularRouteFromEntries(Network::Connection& connection) {
   // First check if the per-connection state to see if we need to route to a pre-selected cluster
   // for sni_cluster
@@ -168,8 +167,8 @@ const std::string& Config::getRouteFromEntries(Network::Connection& connection) 
 
   auto color = connection.getPreferClusterColor();
   // TODO
-  if (!color.empty()) {
-    ENVOY_CONN_LOG(debug, "try to found color cluster: {}", connection, color);
+  if (!color.empty() && weighted_clusters_.size() > 0) {
+    ENVOY_CONN_LOG(debug, "weighted cluster : try to found color cluster: {}", connection, color);
     // ignore weight config
     for (const WeightedClusterEntrySharedPtr& cluster : weighted_clusters_) {
 
@@ -194,7 +193,7 @@ const std::string& Config::getRouteFromEntries(Network::Connection& connection) 
       }
       continue;
     }
-    ENVOY_CONN_LOG(debug, "not found color {} cluster", connection, color);
+    ENVOY_CONN_LOG(debug, "weight cluster-- not found color {} cluster", connection, color);
   }
 
   if (weighted_clusters_.empty()) {
@@ -379,22 +378,35 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
 
   ENVOY_CONN_LOG(debug, "initializeUpstreamConnection ---", read_callbacks_->connection());
 
-  ENVOY_LOG(debug, "request prefer upstream cluster color: {}",
-            read_callbacks_->connection().getPreferClusterColor());
+  auto color = read_callbacks_->connection().getPreferClusterColor();
+
+  ENVOY_LOG(debug, "request prefer upstream cluster color: {}", color);
 
   const std::string& cluster_name = getUpstreamCluster();
 
   ENVOY_LOG(debug, "---- getUpstreamCluster: {}", cluster_name);
+  Upstream::ThreadLocalCluster* thread_local_cluster = nullptr;
+
+  std::string true_cluster_name("");
 
   if (cluster_name.empty()) {
     ENVOY_LOG(debug, "--- not found corresponing cluster");
+  } else {
+    auto color_cluster_name = cluster_name + "|" + color.data();
+    thread_local_cluster = cluster_manager_.get(color_cluster_name);
+    if (!thread_local_cluster) {
+      thread_local_cluster = cluster_manager_.get(cluster_name);
+      true_cluster_name = cluster_name;
+    } else {
+      ENVOY_CONN_LOG(debug, "found color cluster:{}", read_callbacks_->connection(),
+                     color_cluster_name);
+      true_cluster_name = color_cluster_name;
+    }
   }
-
-  Upstream::ThreadLocalCluster* thread_local_cluster = cluster_manager_.get(cluster_name);
 
   if (thread_local_cluster) {
     ENVOY_CONN_LOG(debug, "Creating connection to cluster {}", read_callbacks_->connection(),
-                   cluster_name);
+                   true_cluster_name);
   } else {
     ENVOY_CONN_LOG(debug, "thread_local_cluster is null , initializeUpstreamConnection failed",
                    read_callbacks_->connection());
@@ -445,7 +457,7 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
                  if_send_proxy_protocol);
 
   Tcp::ConnectionPool::Instance* conn_pool = cluster_manager_.tcpConnPoolForCluster(
-      cluster_name, Upstream::ResourcePriority::Default, this, transport_socket_options);
+      true_cluster_name, Upstream::ResourcePriority::Default, this, transport_socket_options);
   if (!conn_pool) {
     // Either cluster is unknown or there are no healthy hosts. tcpConnPoolForCluster() increments
     // cluster->stats().upstream_cx_none_healthy in the latter case.
