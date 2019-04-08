@@ -1,6 +1,6 @@
 ## introduction
 
-[./demo](./images/demo.jpg)
+![./demo](./images/demo.jpg)
     
 ## build this example
 
