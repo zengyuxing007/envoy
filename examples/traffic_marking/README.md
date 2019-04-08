@@ -12,27 +12,55 @@ docker-compose up
 
 ## test 
 
+### env check
+
+``` shell
+jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ docker-compose-ip 
+
+/trafficmarking_front-envoy_1 - 192.168.144.8
+
+/mysql-green-container - 192.168.144.7
+
+/trafficmarking_service1-green_1 - 192.168.144.6
+
+/trafficmarking_service1_1 - 192.168.144.5
+
+/trafficmarking_service1-red_1 - 192.168.144.4
+
+/trafficmarking_mysql-envoy-proxy_1 - 192.168.144.3
+
+/mysql-container - 192.168.144.2
+
+```
 
 
 ### HTTP
 
 ``` shell
-jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ curl -H'x-envoy-prefer-cluster-color: green' 10.240.200.130:7001/service/1      
-
-Hello from behind Envoy (service green)! hostname: cf84dad37c61 resolvedhostname: 172.24.0.4
 
 jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ 
 
-jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ curl -H'x-envoy-prefer-cluster-color: red' 10.240.200.130:7001/service/1     
+jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ curl -H'x-envoy-prefer-cluster-color: red' 10.240.200.130:7001/service/1 
 
-Hello from behind Envoy (service red)! hostname: 8fbfe19a8e50 resolvedhostname: 172.24.0.2
+Hello from behind Envoy (service red)! hostname: ac53e541b9c1 resolvedhostname: 192.168.144.4
 
 jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ 
 
-jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ curl -H'x-envoy-prefer-cluster-color: black' 10.240.200.130:7001/service/1    
+jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ curl -H'x-envoy-prefer-cluster-color: green' 10.240.200.130:7001/service/1   
 
-Hello from behind Envoy (service simple)! hostname: 8c74a03dd769 resolvedhostname: 172.24.0.3
-    
+Hello from behind Envoy (service green)! hostname: 818aa69dc51c resolvedhostname: 192.168.144.6
+
+jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ 
+
+jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ curl -H'x-envoy-prefer-cluster-color: black' 10.240.200.130:7001/service/1     
+
+Hello from behind Envoy (service simple)! hostname: dc3216b71bf6 resolvedhostname: 192.168.144.5
+
+jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ 
+
+jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ curl -H'x-envoy-prefer-cluster-color: xxx' 10.240.200.130:7001/service/1     
+
+Hello from behind Envoy (service simple)! hostname: dc3216b71bf6 resolvedhostname: 192.168.144.5
         
 ```
 
