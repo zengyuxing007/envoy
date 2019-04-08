@@ -87,7 +87,7 @@ static_resources:
     metadata:
         filter_metadata:
             service_color:
-                value: "green"
+                value: "red"
     connect_timeout: 0.25s
     type: strict_dns
     lb_policy: round_robin
