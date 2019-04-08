@@ -33,9 +33,9 @@ def hello(service_number):
 
 @app.route('/person_info/<id>')
 def get_person_info(id):
-  db = MySQLdb.connect("mysql-envoy-proxy", "root", "root123", "person", charset='utf8', port=13306)
+  db = MySQLdb.connect("mysql-envoy-proxy", "demo", "demo123", "person", charset='utf8', port=13306)
   cursor = db.cursor()
-  sql = "SELECT * FROM person WHERE id = %u" % (id)
+  sql = "SELECT `fname`,`lname`,`age`,`sex`,`income` FROM person WHERE id = %s" % (id)
   try:
     cursor.execute(sql)
     results = cursor.fetchall()
@@ -45,7 +45,7 @@ def get_person_info(id):
       age = row[2]
       sex = row[3]
       income = row[4]
-      return ('Person <{}> information: firstName: {}, lastName: {}, age: {},'
+      return ('Person information: id: {}, firstName: {}, lastName: {}, age: {},'
               'sex: {}, income: {}\n'.format(id, fname, lname, age, sex, income))
   except:
     return ("Error: unable to fetch data")

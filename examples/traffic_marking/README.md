@@ -1,3 +1,7 @@
+## introduction
+
+[./demo](./images/demo.jpg)
+    
 ## build this example
 
 docker-compose build
@@ -6,7 +10,11 @@ docker-compose build
     
 docker-compose up
 
-## test
+## test 
+
+
+
+### HTTP
 
 ``` shell
 jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ curl -H'x-envoy-prefer-cluster-color: green' 10.240.200.130:7001/service/1      
@@ -26,6 +34,21 @@ jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ curl -H
 Hello from behind Envoy (service simple)! hostname: 8c74a03dd769 resolvedhostname: 172.24.0.3
     
         
+```
+
+### TCP     
+
+``` shell
+jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ curl -H'x-envoy-prefer-cluster-color: red' 10.240.200.130:7001/person_info/1
+
+Person information: id: 1, firstName: jesse, lastName: zeng, age: 18,sex: MALE, income: 10000
+
+jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ 
+
+jesse@zengyuxing-ubuntu:~/serviceMesh/envoy-gf/examples/traffic_marking$ curl -H'x-envoy-prefer-cluster-color: green' 10.240.200.130:7001/person_info/1   
+
+Person information: id: 1, firstName: bill, lastName: gates, age: 18,sex: MALE, income: 88888888
+    
 ```
 
 

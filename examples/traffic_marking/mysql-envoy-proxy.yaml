@@ -14,7 +14,7 @@ static_resources:
     - socket_address:
         address: mysql
         port_value: 3306
-  - name: mysql-green
+  - name: mysql|green
     metadata:
       filter_metadata: 
          service_color: 

@@ -384,7 +384,7 @@ Network::FilterStatus Filter::initializeUpstreamConnection() {
 
   const std::string& cluster_name = getUpstreamCluster();
 
-  ENVOY_LOG(debug, "---- getUpstreamCluster: {}", cluster_name);
+  ENVOY_LOG(debug, "getUpstreamCluster: {}", cluster_name);
   Upstream::ThreadLocalCluster* thread_local_cluster = nullptr;
 
   std::string true_cluster_name("");

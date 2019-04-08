@@ -34,7 +34,7 @@ static_resources:
     metadata:
         filter_metadata:
             config_downstream_color:
-                value: "default"
+                value: "red"
     address:
       socket_address:
         address: 0.0.0.0

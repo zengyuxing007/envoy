@@ -19,15 +19,17 @@ services:
   service1:
     build:
       context: .
-      dockerfile: Dockerfile-service
+      dockerfile: Dockerfile-service-iptables
     volumes:
       - ./service-envoy.yaml:/etc/service-envoy.yaml
     networks:
       envoymesh:
         aliases:
-          - service1
+          -service1
     environment:
       - SERVICE_NAME=simple
+    cap_add:
+      - ALL
     expose:
       - "18080"
       - "28081"
@@ -38,15 +40,17 @@ services:
   service1-green:
     build:
       context: .
-      dockerfile: Dockerfile-service
+      dockerfile: Dockerfile-service-iptables
     volumes:
-      - ./service-envoy.yaml:/etc/service-envoy.yaml
+      - ./service-envoy-green.yaml:/etc/service-envoy.yaml
     networks:
       envoymesh:
         aliases:
           - service1-green
     environment:
       - SERVICE_NAME=green
+    cap_add:
+      - ALL
     expose:
       - "18081"
       - "28082"
@@ -57,15 +61,17 @@ services:
   service1-red:
     build:
       context: .
-      dockerfile: Dockerfile-service
+      dockerfile: Dockerfile-service-iptables
     volumes:
-      - ./service-envoy.yaml:/etc/service-envoy.yaml
+      - ./service-envoy-red.yaml:/etc/service-envoy.yaml
     networks:
       envoymesh:
         aliases:
           - service1-red
     environment:
       - SERVICE_NAME=red
+    cap_add:
+      - ALL
     expose:
       - "18082"
       - "28083"
@@ -91,6 +97,8 @@ services:
   mysql:
    image: mysql:latest
    container_name: mysql-container
+   expose:
+     - 33306
    ports:
     - 33306:3306
    volumes:
@@ -100,14 +108,16 @@ services:
         aliases:
           - mysql
    environment:
-    MYSQL_ROOT_PASSWORD: 
+    MYSQL_ROOT_PASSWORD: root123
     MYSQL_DATABASE: person
-    MYSQL_USER: root
-    MYSQL_PASSWORD: root123
+    MYSQL_USER: demo
+    MYSQL_PASSWORD: demo123
 
   mysql-green:
    image: mysql:latest
    container_name: mysql-green-container
+   expose:
+     - 23306
    ports:
     - 23306:3306
    volumes:
@@ -117,10 +127,10 @@ services:
         aliases:
           - mysql-green
    environment:
-    MYSQL_ROOT_PASSWORD: 
+    MYSQL_ROOT_PASSWORD: root123
     MYSQL_DATABASE: person
-    MYSQL_USER: root
-    MYSQL_PASSWORD: root123
+    MYSQL_USER: demo
+    MYSQL_PASSWORD: demo123
         
 networks:
   envoymesh: {}
