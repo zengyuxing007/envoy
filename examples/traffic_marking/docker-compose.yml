@@ -25,7 +25,7 @@ services:
     networks:
       envoymesh:
         aliases:
-          -service1
+          - service1
     environment:
       - SERVICE_NAME=simple
     cap_add:
