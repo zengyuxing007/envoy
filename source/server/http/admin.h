@@ -131,6 +131,8 @@ public:
                      Http::HeaderMap& response_headers, std::string& body) override;
   void closeSocket();
   void addListenerToHandler(Network::ConnectionHandler* handler) override;
+  const Http::UrlTransformerMap& getUrlTransformerConfig() const override { return url_transformer_map_; }
+
 
 private:
   /**
@@ -318,6 +320,7 @@ private:
   Network::SocketPtr socket_;
   AdminListenerPtr listener_;
   const AdminInternalAddressConfig internal_address_config_;
+  Http::UrlTransformerMap url_transformer_map_;
 };
 
 /**

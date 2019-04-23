@@ -170,6 +170,18 @@ public:
   }
 };
 
+
+struct UrlTransformer{
+    std::string prefix_;
+
+    UrlTransformer(const std::string& prefix)
+            :prefix_(prefix) {
+    }
+    
+};
+
+typedef std::unordered_map<std::string,Http::UrlTransformer> UrlTransformerMap;
+
 /**
  * Abstract configuration for the connection manager.
  */
@@ -345,6 +357,11 @@ public:
    * @return if the HttpConnectionManager should normalize url following RFC3986
    */
   virtual bool shouldNormalizePath() const PURE;
+
+  /**
+   * @return url transformer config map
+   */
+  virtual const UrlTransformerMap& getUrlTransformerConfig() const PURE;
 };
 } // namespace Http
 } // namespace Envoy

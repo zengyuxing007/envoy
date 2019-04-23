@@ -405,6 +405,8 @@ message HttpConnectionManager {
   // Note that Envoy does not perform
   // `case normalization <https://tools.ietf.org/html/rfc3986#section-6.2.2.1>`
   google.protobuf.BoolValue normalize_path = 30;
+
+  repeated UrlTransformer url_transformer = 100;
 }
 
 message Rds {
@@ -456,4 +458,17 @@ message HttpFilter {
   }
 
   reserved 3;
+}
+
+// url transformer for yanxuan
+// only transfor url like these: 
+// 127.0.0.1:8550/proxy/xxx/yyy
+// 127.0.0.1:8550/p/xxx/yyy
+// the prefix[ proxy or p ] can configured
+// the transformer logical: the http request header will be changed 
+// 1、the host header will be changed to -> xxx
+// 2、and the path header will be changed to -> yyy
+    
+message UrlTransformer {
+    string prefix = 1;
 }

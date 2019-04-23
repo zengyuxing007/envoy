@@ -130,6 +130,8 @@ public:
   bool shouldNormalizePath() const override { return normalize_path_; }
   std::chrono::milliseconds delayedCloseTimeout() const override { return delayed_close_timeout_; }
 
+  const Http::UrlTransformerMap& getUrlTransformerConfig() const override { return url_transformer_map_; }
+
 private:
   enum class CodecType { HTTP1, HTTP2, AUTO };
   void processFilter(
@@ -174,6 +176,7 @@ private:
   static const uint64_t StreamIdleTimeoutMs = 5 * 60 * 1000;
   // request timeout is disabled by default
   static const uint64_t RequestTimeoutMs = 0;
+  Http::UrlTransformerMap url_transformer_map_;
 };
 
 } // namespace HttpConnectionManager

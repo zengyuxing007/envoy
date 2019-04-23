@@ -27,6 +27,13 @@ static_resources:
         typed_config:
           "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
           stat_prefix: ingress_http
+          url_transformer:
+            - prefix: "/proxy"
+            - prefix: /p 
+            - prefix: /hash 
+            - prefix: /chash 
+            - prefix: /least  
+
           route_config:
             name: local_route
             virtual_hosts:
@@ -34,10 +41,8 @@ static_resources:
               domains: ["*"]
               routes:
               - match:
-                  regex: "^/proxy/([^/]+)/(.*)"
+                  prefix: "/world"
                 route:
-                  host_rewrite: provider
-                  prefix_rewrite: "/$1/$2"
                   cluster: cluster_01
                   timeout: "0.005s"
           http_filters:

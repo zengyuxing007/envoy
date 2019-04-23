@@ -276,6 +276,13 @@ HttpConnectionManagerConfig::HttpConnectionManagerConfig(
     processFilter(filters[i], i, "http", filter_factories_);
   }
 
+  const auto& url_transformer_config = config.url_transformer();
+  for (int32_t i = 0; i < url_transformer_config.size(); i++) {
+      const std::string& prefix = url_transformer_config[i].prefix();
+      ENVOY_LOG(debug, "url_transformer prefix: {}", prefix);
+      url_transformer_map_.insert(std::make_pair<absl::string_view,Http::UrlTransformer>(prefix,Http::UrlTransformer(prefix)));
+  }
+
   for (auto upgrade_config : config.upgrade_configs()) {
     const std::string& name = upgrade_config.upgrade_type();
     const bool enabled = upgrade_config.has_enabled() ? upgrade_config.enabled().value() : true;

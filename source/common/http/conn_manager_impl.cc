@@ -580,6 +580,43 @@ void ConnectionManagerImpl::ActiveStream::decodeHeaders(HeaderMapPtr&& headers, 
   ENVOY_STREAM_LOG(debug, "request headers complete (end_stream={}):\n{}", *this, end_stream,
                    *request_headers_);
 
+  bool isLoopbackReq = request_headers_->Host()->value().getStringView().compare(0,9,"127.0.0.1") ? false : true;
+  bool isLoopbackReq1 = request_headers_->Host()->value().getStringView().compare(0,9,"localhost") ? false : true;
+  isLoopbackReq |= isLoopbackReq1;
+    
+  HeaderEntry* path = request_headers_->Path();
+  if(isLoopbackReq && path != nullptr) {
+      auto url_transformer_map = connection_manager_.config_.getUrlTransformerConfig();
+      auto origin_path = path->value().getStringView();
+      if(url_transformer_map.size() > 0) {
+          //check origin_path is matched like ^/proxy/([^/]+)/(.*) 
+          const auto parts = StringUtil::splitToken(origin_path, "/");
+          if(parts.size() < 3) {
+              ENVOY_STREAM_LOG(debug,"{} origin_path not compare-- format",*this,origin_path);
+          }
+          else{
+              ENVOY_STREAM_LOG(debug,"parts 0: {}, 1: {}, 2:{}",*this,parts[0],parts[1],parts[2]);
+              std::string prefix("/");
+              prefix.append(parts[0].data(),parts[0].size());
+
+              if(url_transformer_map.find(prefix) != url_transformer_map.end()){
+                  ENVOY_STREAM_LOG(debug,"find prefix {}",*this,prefix);
+                  absl::string_view::size_type index = parts[0].size() + parts[1].size() + 2;
+                  ENVOY_STREAM_LOG(debug,"host: {},path:{}",*this,parts[1],origin_path.substr(index));
+                  //host
+                  request_headers_->insertHost().value(parts[1]);
+                  //change path
+                  path->value(origin_path.substr(index));
+                  ENVOY_STREAM_LOG(debug, "after url transform :request headers complete (end_stream={}):\n{}", *this, end_stream,
+                          *request_headers_);
+              }
+              else {
+                  ENVOY_STREAM_LOG(debug,"{} origin_path not compare any url_transformer prefix",*this,origin_path);
+              }
+          }
+      }
+  }
+
   // We end the decode here only if the request is header only. If we convert the request to a
   // header only, the stream will be marked as done once a subsequent decodeData/decodeTrailers is
   // called with end_stream=true.
