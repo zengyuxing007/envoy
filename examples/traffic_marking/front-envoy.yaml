@@ -47,11 +47,6 @@ static_resources:
               socket_address:
                 address: service1
                 port_value: 18080
-        - endpoint:
-            address:
-              socket_address:
-                address: hello
-                port_value: 1808
 
   - name: service1|green
     metadata:
