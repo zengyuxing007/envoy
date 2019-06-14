@@ -3,10 +3,17 @@ envoy:
 	bazel build -c dbg //source/exe:envoy
 	cd /home/jesse/serviceMesh/envoy-gf
 	cp -rf ./bazel-bin/source/exe/envoy-static envoy
+release:
+	bazel build //source/exe:envoy
+	cd /home/jesse/serviceMesh/envoy-gf
+	cp -rf ./bazel-bin/source/exe/envoy-static envoy-release
+
 build:envoy
 	docker build -f Dockerfile-envoy -t vifoggy/envoy:test-latest .
 build-yx:envoy
 	docker build -f Dockerfile-envoy-yx -t vifoggy/envoy:yx-latest .
+build-yx-release: envoy-release
+	docker build -f Dockerfile-envoy-yx-release -t vifoggy/envoy:yx-release-${shell date +"%Y%m%d%H%M%S"} .
 
 dockerpush: build
 	docker push vifoggy/envoy:test-latest
