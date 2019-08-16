@@ -20,6 +20,7 @@ public:
   ThreadId() : id_(std::numeric_limits<int64_t>::min()) {}
   explicit ThreadId(int64_t id) : id_(id) {}
 
+  int64_t id() { return id_; }
   std::string debugString() const { return std::to_string(id_); }
   bool isEmpty() const { return *this == ThreadId(); }
   friend bool operator==(ThreadId lhs, ThreadId rhs) { return lhs.id_ == rhs.id_; }

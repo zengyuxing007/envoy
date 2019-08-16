@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package envoy.config.filter.http.resty.v2;
+
+option java_outer_classname = "RestyProto";
+option java_multiple_files = true;
+option java_package = "io.envoyproxy.envoy.config.filter.http.resty.v2";
+option go_package = "v2";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/struct.proto";
+import "validate/validate.proto";
+
+// [#protodoc-title: resty]
+// Resty :ref:`configuration overview <config_http_filters_resty>`.
+
+
+//# the same with kong plugins configure
+//# plugins:
+//# - name: rate-limiting
+//#   consumer: example-user
+//#   service: another-service
+//#   _comment: "example-user is extra limited when using another-service"
+//#   config:
+//#     hour: 2
+//#   # tags are for your organization only and have no meaning for Kong:
+//#   tags:
+//#   - extra_limits
+//#   - my_tag
+//
+
+message Plugin {
+    string name = 1;
+    google.protobuf.Struct config = 2;
+}
+
+message EnablePlugins{
+  // enabled the plugin list and config
+  repeated Plugin plugins = 1  ;
+}

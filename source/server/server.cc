@@ -44,6 +44,7 @@
 #include "server/guarddog_impl.h"
 #include "server/listener_hooks.h"
 #include "server/ssl_context_manager.h"
+#include "extensions/filters/common/lua/script_action.h"
 
 namespace Envoy {
 namespace Server {
@@ -378,6 +379,10 @@ void InstanceImpl::initialize(const Options& options,
   // cluster_manager_factory_ is available.
   config_.initialize(bootstrap_, *this, *cluster_manager_factory_);
   http_context_.setTracer(config_.httpTracer());
+
+  //TODO
+  //add bootstrap -- init file path
+  Envoy::Extensions::Filters::Common::Lua::gScriptAction.init("/etc/envoy/script/init.lua");
 
   // Instruct the listener manager to create the LDS provider if needed. This must be done later
   // because various items do not yet exist when the listener manager is created.

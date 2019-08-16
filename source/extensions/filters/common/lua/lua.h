@@ -360,7 +360,9 @@ using CoroutinePtr = std::unique_ptr<Coroutine>;
  */
 class ThreadLocalState : Logger::Loggable<Logger::Id::lua> {
 public:
+  ThreadLocalState() {}
   ThreadLocalState(const std::string& code, ThreadLocal::SlotAllocator& tls);
+  bool init(const std::string& scriptPath, ThreadLocal::SlotAllocator& tls);
 
   /**
    * @return CoroutinePtr a new coroutine.
@@ -380,6 +382,9 @@ public:
    * @return a slot/index for later use with getGlobalRef().
    */
   uint64_t registerGlobal(const std::string& global);
+
+
+  uint64_t registerGlobalVariable(const std::string& globalVariable);
 
   /**
    * Register a type with the thread local state. After this call the type will be available on
@@ -408,6 +413,7 @@ public:
 private:
   struct LuaThreadLocal : public ThreadLocal::ThreadLocalObject {
     LuaThreadLocal(const std::string& code);
+    LuaThreadLocal(const std::string& scriptFile,bool isScriptFile);
 
     CSmartPtr<lua_State, lua_close> state_;
     std::vector<int> global_slots_;

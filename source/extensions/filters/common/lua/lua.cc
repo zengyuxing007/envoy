@@ -1,4 +1,5 @@
 #include "extensions/filters/common/lua/lua.h"
+#include "extensions/filters/common/lua/lua_tinker.h"
 
 #include <memory>
 
@@ -63,11 +64,48 @@ ThreadLocalState::ThreadLocalState(const std::string& code, ThreadLocal::SlotAll
   });
 }
 
+
+bool ThreadLocalState::init(const std::string& scriptPath, ThreadLocal::SlotAllocator& tls) {
+
+  tls_slot_ = tls.allocateSlot();
+  // First verify that the supplied code can be parsed.
+  CSmartPtr<lua_State, lua_close> state(lua_open());
+  luaL_openlibs(state.get());
+
+  std::string initScriptFile = scriptPath + "/init.lua";
+
+  if (0 != luaL_dofile(state.get(), initScriptFile.c_str())) {
+    throw LuaException(fmt::format("script load error: {}", lua_tostring(state.get(), -1)));
+    return false;
+  }
+
+  bool isScriptPath = true;
+
+  // Now initialize on all threads.
+  tls_slot_->set([initScriptFile,isScriptPath](Event::Dispatcher&) {
+    return ThreadLocal::ThreadLocalObjectSharedPtr{new LuaThreadLocal(initScriptFile,isScriptPath)};
+  });
+  return true;
+}
+
+
 int ThreadLocalState::getGlobalRef(uint64_t slot) {
   LuaThreadLocal& tls = tls_slot_->getTyped<LuaThreadLocal>();
   ASSERT(tls.global_slots_.size() > slot);
   return tls.global_slots_[slot];
 }
+
+uint64_t ThreadLocalState::registerGlobalVariable(const std::string& globalVariable) {
+
+    tls_slot_->runOnAllThreads([this,globalVariable] {
+        LuaThreadLocal& tls = tls_slot_->getTyped<LuaThreadLocal>();
+        //TODO
+        //lua_State* L = tls.state_.get();
+        //lua_tinker::set( L, "_ScriptAction", this );
+    });
+    return current_global_slot_++;
+}
+
 
 uint64_t ThreadLocalState::registerGlobal(const std::string& global) {
   tls_slot_->runOnAllThreads([this, global]() {
@@ -95,6 +133,15 @@ ThreadLocalState::LuaThreadLocal::LuaThreadLocal(const std::string& code) : stat
   int rc = luaL_dostring(state_.get(), code.c_str());
   ASSERT(rc == 0);
 }
+
+ThreadLocalState::LuaThreadLocal::LuaThreadLocal(const std::string& initScriptFile,bool isScriptFile) : state_(lua_open()) {
+  luaL_openlibs(state_.get());
+  isScriptFile = isScriptFile;
+  int rc = luaL_dofile(state_.get(), initScriptFile.c_str());
+  ASSERT(rc == 0);
+}
+
+
 
 } // namespace Lua
 } // namespace Common

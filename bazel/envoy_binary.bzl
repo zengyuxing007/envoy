@@ -65,7 +65,7 @@ def _envoy_linkopts():
                    "-pthread",
                    "-lrt",
                    "-ldl",
-                   "-Wl,--hash-style=gnu",
+                   "-Wl,-E,--hash-style=gnu",
                ],
            }) + envoy_static_link_libstdcpp_linkopts() + \
            _envoy_select_exported_symbols(["-Wl,-E"])

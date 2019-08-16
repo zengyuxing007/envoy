@@ -379,6 +379,7 @@ envoy_cc_library(
         "//source/common/upstream:health_discovery_service_lib",
         "//source/server:overload_manager_lib",
         "//source/server/http:admin_lib",
+        "//source/extensions/filters/common/lua:lua_lib",
         "@envoy_api//envoy/config/bootstrap/v2:bootstrap_cc",
     ],
 )
@@ -426,6 +427,7 @@ envoy_cc_library(
         "//include/envoy/server:worker_interface",
         "//include/envoy/thread:thread_interface",
         "//include/envoy/thread_local:thread_local_interface",
+        "//source/extensions/filters/common/lua:lua_lib",
     ],
 )
 
