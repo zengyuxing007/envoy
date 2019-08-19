@@ -17,7 +17,6 @@ namespace Resty {
 class RestyPluginManager: Logger::Loggable<Logger::Id::resty> {
 
     public:
-
         using RestyEnablePlugins = envoy::config::filter::http::resty::v2::EnablePlugins ;
         using ScriptAction = Envoy::Extensions::Filters::Common::Lua::ScriptAction;
 
@@ -29,6 +28,7 @@ class RestyPluginManager: Logger::Loggable<Logger::Id::resty> {
         void scriptError(const Filters::Common::Lua::LuaException& e);
         virtual void scriptLog(spdlog::level::level_enum level, const char* message);
 
+        bool doStep(ScriptAction::Step step,int& status);
     public:
 
         Http::FilterHeadersStatus doDecodeHeaders(Http::HeaderMap& headers, bool end_stream);
@@ -39,10 +39,20 @@ class RestyPluginManager: Logger::Loggable<Logger::Id::resty> {
         Http::FilterDataStatus doEncodeData(Buffer::Instance& data, bool end_stream);
         Http::FilterTrailersStatus doEncodeTrailers(Http::HeaderMap& trailers);
 
+        void setDecoderFilterCallbacks(Http::StreamDecoderFilterCallbacks& callbacks) {
+            decoder_callbacks_ = &callbacks;
+        }
+
+        void setEncoderFilterCallbacks(Http::StreamEncoderFilterCallbacks& callbacks) {
+            encoder_callbacks_ = &callbacks;
+        }
+
     private:
 
         RestyPluginMap restyPluginMap_;
-        const RestyEnablePlugins* enable_plugin_list_;
+        const RestyEnablePlugins enable_plugin_list_;
+        Http::StreamDecoderFilterCallbacks* decoder_callbacks_;
+        Http::StreamEncoderFilterCallbacks* encoder_callbacks_;
 
 };
 

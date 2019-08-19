@@ -38,6 +38,7 @@ public:
   }
   void setDecoderFilterCallbacks(Http::StreamDecoderFilterCallbacks& callbacks) override {
     decoder_callbacks_ = &callbacks;
+    resty_plugin_manager_->setDecoderFilterCallbacks(callbacks);
   }
 
   // Http::StreamEncoderFilter
@@ -58,6 +59,7 @@ public:
   }
   void setEncoderFilterCallbacks(Http::StreamEncoderFilterCallbacks& callbacks) override {
     encoder_callbacks_ = &callbacks;
+    resty_plugin_manager_->setEncoderFilterCallbacks(callbacks);
   };
 
 private:

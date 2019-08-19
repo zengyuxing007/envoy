@@ -8,7 +8,7 @@ namespace HttpFilters {
 namespace Resty {
 
 
-    RestyPluginManager::RestyPluginManager(const RestyEnablePlugins& enablePluginList):enable_plugin_list_(&enablePluginList)
+    RestyPluginManager::RestyPluginManager(const RestyEnablePlugins& enablePluginList):enable_plugin_list_(enablePluginList)
     {
     }
 
@@ -18,7 +18,6 @@ namespace Resty {
 
     bool RestyPluginManager::initAllPlugin()
     {
-        //check config if is valid
         auto tid = std::this_thread::get_id();
         ScriptAction* sa = Envoy::Extensions::Filters::Common::Lua::gScriptAction.getThreadScriptAction(tid);
 
@@ -27,20 +26,14 @@ namespace Resty {
             return false;
         }
 
-        int size = enable_plugin_list_->plugins_size();
+        int size = enable_plugin_list_.plugins_size();
         ENVOY_LOG(info,"try to initAllPlugin---size:{}",size);
-        int i = 0;
-        // thread safe??
-        //auto plugins = enable_plugin_list_->mutable_plugins();
-        //for(auto &p: plugins ) {
-
-        {
-            auto p = enable_plugin_list_->plugins(0);
-            //envoy::config::filter::http::resty::v2::Plugin* p_ptr = enable_plugin_list_->mutable_plugins(i);
-            //const envoy::config::filter::http::resty::v2::Plugin& p = *p_ptr;
-            //const envoy::config::filter::http::resty::v2::Plugin& p = enable_plugin_list_->mutable_plugins(i);
-
+        //TODO thread safe??
+        int i(0);
+        for( ; i < size; ++i ) {
+            auto p = enable_plugin_list_.plugins(i);
             ENVOY_LOG(debug,"try to enable plugin: {}",p.name());
+            Table p_config_table = sa->newNullTable();
             if(p.has_config())
             {
                 auto p_config = p.config();
@@ -52,12 +45,54 @@ namespace Resty {
                 for(auto &iter: fields_map) {
                     config_map[iter.first] = iter.second.string_value();
                 }
-                Table p_config_table = sa->setMapTable(config_map);
-                sa->initPlugin(p.name(),p_config_table);
+                sa->setMapTable(p_config_table,config_map);
             }
+            sa->initPlugin(p.name(),p_config_table);
         }
         return true;
     }
+
+    bool RestyPluginManager::doStep(ScriptAction::Step step,int& returnStatus)
+    {
+        auto tid = std::this_thread::get_id();
+        ScriptAction* sa = Envoy::Extensions::Filters::Common::Lua::gScriptAction.getThreadScriptAction(tid);
+
+        int status(0);
+
+        if(sa == NULL){
+            ENVOY_LOG(error,"doStep:{} error: not found ScriptAction by threadId-{}",step,tid);
+            status = 1;
+            return false;
+        }
+
+        int size = enable_plugin_list_.plugins_size();
+        int i(0);
+        for( ;i < size; ++i ) {
+            auto p = enable_plugin_list_.plugins(i);
+            Table p_config_table = sa->newNullTable();
+            if(p.has_config())
+            {
+                auto p_config = p.config();
+                ///change struct to Table (lua)
+                ENVOY_LOG(debug,"plugin config fields size:{}",p_config.fields_size());
+
+                auto fields_map = p_config.fields();
+                for(auto &iter: fields_map) {
+                    p_config_table.set(iter.first.c_str(),iter.second.string_value().c_str());
+                }
+            }
+
+            int intStatus(0);
+            sa->doScriptStep(step,decoder_callbacks_,encoder_callbacks_,p.name(),p_config_table,intStatus);
+            if(intStatus == 0)
+                continue;
+            else
+                break;
+        }
+        returnStatus = status;
+        return true;
+    }
+
 
 
     void RestyPluginManager::scriptError(const Filters::Common::Lua::LuaException& e) {
@@ -95,13 +130,37 @@ namespace Resty {
     //////////////// decode
 
     Http::FilterHeadersStatus RestyPluginManager::doDecodeHeaders(Http::HeaderMap& headers, bool end_stream) {
+
+        auto route = decoder_callbacks_->route();
+
+        //TODO
+        if(!route){
+            ENVOY_LOG(debug,"not any route found");  
+            return Http::FilterHeadersStatus::Continue;
+        }
+
+        auto routeEntry = route->routeEntry(); 
+        if (!routeEntry) {  
+            ENVOY_LOG(debug,"not any routeEntry found");  
+            return Http::FilterHeadersStatus::Continue;
+        }
+
         Http::FilterHeadersStatus status = Http::FilterHeadersStatus::Continue;
+        int intStatus(0);
+        ENVOY_LOG(info,"RestyPluginManager -- doDecodeHeaders");
 
         try {
-           // status = resty_plugin_manager_->doDecodeHeaders();
-           ENVOY_LOG(info,"RestyPluginManager -- doDecodeHeaders");
+           doStep(ScriptAction::Step::DO_DECODE_HEADER,intStatus);
+
         } catch (const Filters::Common::Lua::LuaException& e) {
             scriptError(e);
+            status = Http::FilterHeadersStatus::StopIteration;
+        }
+
+        if(intStatus) {
+            //// TODO
+        }
+        else{
         }
 
         return status;
@@ -109,22 +168,28 @@ namespace Resty {
 
     Http::FilterDataStatus RestyPluginManager::doDecodeData(Buffer::Instance& data, bool end_stream) {
         Http::FilterDataStatus status = Http::FilterDataStatus::Continue;
+        int intStatus(0);
 
+        ENVOY_LOG(info,"RestyPluginManager -- doDecodeData");
         try {
-            //status = resty_pluginn_manager_->onData(data, end_stream);
+           doStep(ScriptAction::Step::DO_DECODE_DATA,intStatus);
         } catch (const Filters::Common::Lua::LuaException& e) {
             scriptError(e);
+            //TODO
+            status = Http::FilterDataStatus::StopIterationNoBuffer;
         }
-
         return status;
     }
 
     Http::FilterTrailersStatus RestyPluginManager::doDecodeTrailers(Http::HeaderMap& trailers) {
         Http::FilterTrailersStatus status = Http::FilterTrailersStatus::Continue;
+        int intStatus(0);
+        ENVOY_LOG(info,"RestyPluginManager -- doDecodeTrailers");
         try {
-            //status = resty_pluginn_manager_->onDecodeTrailers(trailers);
+           doStep(ScriptAction::Step::DO_DECODE_TRAILERS,intStatus);
         } catch (const Filters::Common::Lua::LuaException& e) {
             scriptError(e);
+            status = Http::FilterTrailersStatus::StopIteration;
         }
 
         return status;
@@ -137,9 +202,11 @@ namespace Resty {
 
     Http::FilterHeadersStatus RestyPluginManager::doEncodeHeaders(Http::HeaderMap& headers, bool end_stream) {
         Http::FilterHeadersStatus status = Http::FilterHeadersStatus::Continue;
+        int intStatus(0);
+        ENVOY_LOG(info,"RestyPluginManager -- doEncodeHeaders");
 
         try {
-            // status = resty_plugin_manager_->doEncodeHeaders();
+            doStep(ScriptAction::Step::DO_ENCODE_HEADER,intStatus);
         } catch (const Filters::Common::Lua::LuaException& e) {
             scriptError(e);
         }
@@ -150,8 +217,10 @@ namespace Resty {
     Http::FilterDataStatus RestyPluginManager::doEncodeData(Buffer::Instance& data, bool end_stream) {
         Http::FilterDataStatus status = Http::FilterDataStatus::Continue;
 
+        int intStatus(0);
+        ENVOY_LOG(info,"RestyPluginManager -- doEncodeData");
         try {
-            //status = resty_pluginn_manager_->onData(data, end_stream);
+            doStep(ScriptAction::Step::DO_ENCODE_DATA,intStatus);
         } catch (const Filters::Common::Lua::LuaException& e) {
             scriptError(e);
         }
@@ -161,8 +230,10 @@ namespace Resty {
 
     Http::FilterTrailersStatus RestyPluginManager::doEncodeTrailers(Http::HeaderMap& trailers) {
         Http::FilterTrailersStatus status = Http::FilterTrailersStatus::Continue;
+        int intStatus(0);
+        ENVOY_LOG(info,"RestyPluginManager -- doEncodeTrailers");
         try {
-            //status = resty_pluginn_manager_->onEncodeTrailers(trailers);
+            doStep(ScriptAction::Step::DO_ENCODE_TRAILERS,intStatus);
         } catch (const Filters::Common::Lua::LuaException& e) {
             scriptError(e);
         }

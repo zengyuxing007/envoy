@@ -23,6 +23,11 @@ public:
     bool reload();
     virtual void registerActionInterface() {}
 
+    Table newNullTable()
+    {
+        Table table(_L);
+        return table;
+    }
 
 
 public:
@@ -52,6 +57,10 @@ public:
     inline bool getVecTable(Table&, Cont<T>&);
     template <typename T1, typename T2, template <typename E1, typename E2, typename = std::less<E1>, typename = std::allocator<std::pair<const E1, E2> > > class Cont>
     inline Table setMapTable(const Cont<T1, T2>&);
+
+    template <typename T1, typename T2, template <typename E1, typename E2, typename = std::less<E1>, typename = std::allocator<std::pair<const E1, E2> > > class Cont>
+    inline void setMapTable(Table& table,const Cont<T1, T2>&);
+
     template <typename T1, typename T2, template <typename E1, typename E2, typename = std::less<E1>, typename = std::allocator<std::pair<const E1, E2> > > class Cont>
     inline bool getMapTable(Table&, Cont<T1, T2>&);
 

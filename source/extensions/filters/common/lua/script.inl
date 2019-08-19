@@ -51,6 +51,22 @@ inline Table Script::setMapTable( const Cont<T1, T2>& value )
     return table;
 }
 
+
+template <typename T1, typename T2, template <typename E1, typename E2, typename = std::less<E1>, typename = std::allocator<std::pair<const E1, E2> > > class Cont >
+inline void Script::setMapTable(Table& table, const Cont<T1, T2>& value )
+{
+    typename Cont<T1, T2>::const_iterator cit = value.begin();
+    for ( ; cit != value.end(); ++ cit )
+    {
+        Table elem( _L );
+        elem.put<T1>( cit->first );
+        elem.put<T2>( cit->second );
+        table.put( elem );
+    }
+}
+
+
+
 template <typename T1, typename T2, template <typename E1, typename E2, typename = std::less<E1>, typename = std::allocator<std::pair<const E1, E2> > > class Cont>
 inline bool Script::getMapTable( Table& table, Cont<T1, T2>& value )
 {

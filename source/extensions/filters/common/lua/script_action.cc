@@ -1,5 +1,6 @@
 #include "extensions/filters/common/lua/script_action.h"
 #include "extensions/filters/common/lua/lua.h"
+#include "envoy/http/codes.h"
 
 
 namespace Envoy {
@@ -46,6 +47,8 @@ void ScriptAction::registerActionInterface()
 
     CLASS_ADD(ScriptAction);
     CLASS_DEF(ScriptAction, scriptLog);
+    CLASS_DEF(ScriptAction, directResponse);
+    CLASS_DEF(ScriptAction, direct200Response);
     lua_tinker::set( _L, "_ScriptAction", this );
 }
 
@@ -103,9 +106,9 @@ void ScriptAction::scriptLog(int level, const char * msg ) {
 bool ScriptAction::initPlugin(const std::string& name,Table& config){
 
     try {
-        ENVOY_LOG(debug,"::initPlugin[{}] invoke lua init function",name);
+        ENVOY_LOG(debug,"ScriptAction::initPlugin[{}] invoke lua init function",name);
         static char buffer[64] = "init_plugin"; 
-        Run<bool>(NULL,buffer,name,config);
+        Run<bool>(NULL,buffer,name.c_str(),config);
     }
     catch (const Filters::Common::Lua::LuaException& e) {
         ENVOY_LOG(error,"init Plugin error: {}",e.what());
@@ -113,6 +116,58 @@ bool ScriptAction::initPlugin(const std::string& name,Table& config){
     }
     return true;
 }
+
+
+bool ScriptAction::doScriptStep(Step step, Envoy::Http::StreamFilterCallbacks* decoderCallback, 
+        Envoy::Http::StreamFilterCallbacks* encoderCallback,const std::string& name,
+        Table& config,int& status){
+
+    ENVOY_LOG(debug,"do step {}: plugin {}",step,name);
+    // 定义ScriptAction::Step
+    //
+    static char buffer[][64] = { "begin","init_plugin","decodeHeader","decoderData","decodeTrailers","END_DECODE"
+                                  "encodeHeader","encodeData","encodeTrailers"
+                                };
+    int i = step;
+
+    Envoy::Http::StreamFilterCallbacks* stream;
+    if (step < END_DECODE)
+        stream = decoderCallback;
+    else 
+        stream = encoderCallback;
+
+    Envoy::Http::StreamFilterCallbacks * old_stream = _stream;
+
+    bool result(false);
+    try {
+        _stream = stream;
+        result = Run<bool>(stream,buffer[i],name.c_str(),config,config,status);
+    }
+    catch (const Filters::Common::Lua::LuaException& e) {
+        ENVOY_LOG(error,"Plugin error: {}",e.what());
+        _stream = old_stream;
+        return false;
+    }
+    _stream = old_stream;
+    return result;
+}
+
+
+bool ScriptAction::directResponse(Http::Code& error_code,const char* body) {
+
+    Envoy::Http::StreamDecoderFilterCallbacks* stream = reinterpret_cast<Envoy::Http::StreamDecoderFilterCallbacks*>(_stream);
+    stream->sendLocalReply(error_code, body, nullptr,absl::nullopt, "");
+    return true;
+}
+
+bool ScriptAction::direct200Response(const char* body) {
+    Envoy::Http::StreamDecoderFilterCallbacks* stream = reinterpret_cast<Envoy::Http::StreamDecoderFilterCallbacks*>(_stream);
+    stream->sendLocalReply(Http::Code::OK, body, nullptr,absl::nullopt, "");
+    return true;
+}
+
+
+
 
 
 } // namespace Lua

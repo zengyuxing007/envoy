@@ -37,6 +37,19 @@ public:
     ScriptAction(int64_t threadId);
     ~ScriptAction();
 
+    enum Step{
+        INIT_PLUGIN = 1,
+        DO_DECODE_HEADER = 2,
+        DO_DECODE_DATA = 3,
+        DO_DECODE_TRAILERS = 4,
+        END_DECODE,
+        DO_ENCODE_HEADER,
+        DO_ENCODE_DATA,
+        DO_ENCODE_TRAILERS,
+    };
+
+
+
 public:
     bool init(const std::string&);
     void unInit();
@@ -48,6 +61,15 @@ public:
     ScriptAction* getThreadScriptAction(const std::thread::id& threadId);
 
     bool initPlugin(const std::string& name,Table& config);
+
+
+    bool doScriptStep(Step step, Envoy::Http::StreamFilterCallbacks* decoderCallback, 
+            Envoy::Http::StreamFilterCallbacks* encoderCallback,const std::string& name,
+            Table& config,int& status);
+
+    bool scriptDecodeHeaders(const std::string& name,Table& config);
+    bool directResponse(Http::Code& error_code,const char* body);
+    bool direct200Response(const char* body);
 
 public:
     void scriptLog(int level,const char *);
