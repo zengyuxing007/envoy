@@ -60,6 +60,8 @@ public:
     void createThreadScriptAction(int64_t threadId);
     ScriptAction* getThreadScriptAction(const std::thread::id& threadId);
 
+
+    bool checkPluginSchema(const std::string& name,Table& config);
     bool initPlugin(const std::string& name,Table& config);
 
 

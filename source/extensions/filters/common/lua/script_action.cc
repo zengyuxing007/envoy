@@ -110,18 +110,36 @@ void ScriptAction::scriptLog(int level, const char * msg ) {
     }
 }
 
+
+bool ScriptAction::checkPluginSchema(const std::string& name,Table& config){
+
+    bool result(false);
+    try {
+        ENVOY_LOG(debug,"ScriptAction::checkSchema[{}] invoke lua function",name);
+        static char buffer[64] = "check_schema"; 
+        result = Run<bool>(NULL,buffer,name.c_str(),config);
+    }
+    catch (const Filters::Common::Lua::LuaException& e) {
+        ENVOY_LOG(error,"{} plugin config error: {}",name,e.what());
+        return false;
+    }
+    return result;
+}
+
+
 bool ScriptAction::initPlugin(const std::string& name,Table& config){
 
+    bool result(false);
     try {
         ENVOY_LOG(debug,"ScriptAction::initPlugin[{}] invoke lua init function",name);
         static char buffer[64] = "init_plugin"; 
-        Run<bool>(NULL,buffer,name.c_str(),config);
+        result = Run<bool>(NULL,buffer,name.c_str(),config);
     }
     catch (const Filters::Common::Lua::LuaException& e) {
         ENVOY_LOG(error,"init Plugin error: {}",e.what());
         return false;
     }
-    return true;
+    return result;
 }
 
 

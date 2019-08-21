@@ -17,6 +17,48 @@ namespace Resty {
 
     }
 
+
+    std::shared_ptr<Table> RestyPluginManager::pluginConfigToTable(ScriptAction* sa,const RestyPluginProto& p)
+    {
+        Table* table = sa->newNullTable();
+        std::shared_ptr<Table> tablePtr(table);
+        if(p.has_config())
+        {
+            ///change struct to Table (lua)
+            auto p_config = p.config();
+            auto fields_map = p_config.fields();
+            for(auto &iter: fields_map) {
+                table->set(iter.first.c_str(),iter.second.string_value().c_str());
+            }
+        }
+        return tablePtr;
+    }
+
+
+    bool RestyPluginManager::checkPluginSchema()
+    {
+        auto tid = std::this_thread::get_id();
+        ScriptAction* sa = Envoy::Extensions::Filters::Common::Lua::gScriptAction.getThreadScriptAction(tid);
+
+        if(sa == NULL){
+            ENVOY_LOG(error,"checkPluginSchema error: not found ScriptAction by threadId-{}",tid);
+            return false;
+        }
+
+        int size = enable_plugin_list_.plugins_size();
+        ENVOY_LOG(info,"try to checkPluginSchema---size:{}",size);
+        int i(0);
+        for( ; i < size; ++i ) {
+            auto p = enable_plugin_list_.plugins(i);
+            ENVOY_LOG(debug,"try to enable plugin: {}",p.name());
+            auto table = pluginConfigToTable(sa,p);
+            if(!sa->checkPluginSchema(p.name(),*table))
+                return false;
+        }
+        return true;
+    }
+
+
     bool RestyPluginManager::initAllPlugin()
     {
         auto tid = std::this_thread::get_id();
@@ -34,21 +76,9 @@ namespace Resty {
         for( ; i < size; ++i ) {
             auto p = enable_plugin_list_.plugins(i);
             ENVOY_LOG(debug,"try to enable plugin: {}",p.name());
-            Table p_config_table = sa->newNullTable();
-            if(p.has_config())
-            {
-                auto p_config = p.config();
-                ///change struct to Table (lua)
-                ENVOY_LOG(debug,"plugin config fields size:{}",p_config.fields_size());
-
-                auto fields_map = p_config.fields();
-                std::map<std::string,std::string> config_map;
-                for(auto &iter: fields_map) {
-                    config_map[iter.first] = iter.second.string_value();
-                }
-                sa->setMapTable(p_config_table,config_map);
-            }
-            sa->initPlugin(p.name(),p_config_table);
+            auto p_config_table = pluginConfigToTable(sa,p);
+            if(!sa->initPlugin(p.name(),*p_config_table))
+                return false;
         }
         return true;
     }
@@ -67,28 +97,14 @@ namespace Resty {
         int i(0);
         for( ;i < size; ++i ) {
             auto p = enable_plugin_list_.plugins(i);
-            Table p_config_table = sa->newNullTable();
-            if(p.has_config())
-            {
-                auto p_config = p.config();
-                ///change struct to Table (lua)
-                ENVOY_LOG(debug,"plugin config fields size:{}",p_config.fields_size());
-
-                auto fields_map = p_config.fields();
-                for(auto &iter: fields_map) {
-                    p_config_table.set(iter.first.c_str(),iter.second.string_value().c_str());
-                }
-            }
-
+            auto p_config_table = pluginConfigToTable(sa,p);
             uint32_t intStatus(0);
-            if(!sa->doScriptStep(step,decoder_callbacks_,encoder_callbacks_,p.name(),p_config_table,intStatus))
+            if(!sa->doScriptStep(step,decoder_callbacks_,encoder_callbacks_,p.name(),*p_config_table,intStatus))
             {
                 ENVOY_LOG(error,"doScriptStep excute error");
                 return false;
             }
-
             returnStatus = intStatus;
-
             if(isStopIteration(intStatus)) {
                 ENVOY_LOG(debug,"--- return StopIteration");
                 break;

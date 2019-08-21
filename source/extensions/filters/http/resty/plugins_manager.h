@@ -17,8 +17,9 @@ namespace Resty {
 class RestyPluginManager: Logger::Loggable<Logger::Id::resty> {
 
     public:
-        using RestyEnablePlugins = envoy::config::filter::http::resty::v2::EnablePlugins ;
+        using RestyEnablePlugins = envoy::config::filter::http::resty::v2::EnablePlugins;
         using ScriptAction = Envoy::Extensions::Filters::Common::Lua::ScriptAction;
+        using RestyPluginProto = envoy::config::filter::http::resty::v2::Plugin;
 
         RestyPluginManager(const RestyEnablePlugins& enablePluginList);
         virtual ~RestyPluginManager();
@@ -30,10 +31,13 @@ class RestyPluginManager: Logger::Loggable<Logger::Id::resty> {
         bool isStopIteration(uint32_t status);
 
     public:
+
+        bool checkPluginSchema();
         bool initAllPlugin();
         void scriptError(const Filters::Common::Lua::LuaException& e);
         virtual void scriptLog(spdlog::level::level_enum level, const char* message);
 
+        std::shared_ptr<Table> pluginConfigToTable(ScriptAction* sa,const RestyPluginProto& p);
         bool doStep(ScriptAction::Step step,uint32_t& status);
     public:
 

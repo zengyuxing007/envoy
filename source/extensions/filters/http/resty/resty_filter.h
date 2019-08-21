@@ -28,7 +28,7 @@ public:
 
 public:
   Filter(RestyPluginManagerConstSharedPtr resty_plugin_manager) : resty_plugin_manager_(resty_plugin_manager) {
-      resty_plugin_manager->initAllPlugin();
+      //resty_plugin_manager->initAllPlugin();
   }
 
 

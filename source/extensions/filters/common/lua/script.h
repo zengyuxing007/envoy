@@ -23,9 +23,9 @@ public:
     bool reload();
     virtual void registerActionInterface() {}
 
-    Table newNullTable()
+    Table* newNullTable()
     {
-        Table table(_L);
+        Table* table = new Table(_L);
         return table;
     }
 
