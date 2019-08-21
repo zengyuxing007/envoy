@@ -1,6 +1,7 @@
 #include "extensions/filters/http/resty/plugins_manager.h"
 #include "extensions/filters/common/lua/lua.h"
 #include <google/protobuf/struct.pb.h>
+#include "common/common/enum_to_int.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -52,16 +53,13 @@ namespace Resty {
         return true;
     }
 
-    bool RestyPluginManager::doStep(ScriptAction::Step step,int& returnStatus)
+    bool RestyPluginManager::doStep(ScriptAction::Step step,uint32_t& returnStatus)
     {
         auto tid = std::this_thread::get_id();
         ScriptAction* sa = Envoy::Extensions::Filters::Common::Lua::gScriptAction.getThreadScriptAction(tid);
 
-        int status(0);
-
         if(sa == NULL){
             ENVOY_LOG(error,"doStep:{} error: not found ScriptAction by threadId-{}",step,tid);
-            status = 1;
             return false;
         }
 
@@ -82,14 +80,23 @@ namespace Resty {
                 }
             }
 
-            int intStatus(0);
-            sa->doScriptStep(step,decoder_callbacks_,encoder_callbacks_,p.name(),p_config_table,intStatus);
-            if(intStatus == 0)
-                continue;
-            else
+            uint32_t intStatus(0);
+            if(!sa->doScriptStep(step,decoder_callbacks_,encoder_callbacks_,p.name(),p_config_table,intStatus))
+            {
+                ENVOY_LOG(error,"doScriptStep excute error");
+                return false;
+            }
+
+            returnStatus = intStatus;
+
+            if(isStopIteration(intStatus)) {
+                ENVOY_LOG(debug,"--- return StopIteration");
                 break;
+            }
+            else{
+                ENVOY_LOG(debug,"Step:{} --- return {} ",step,intStatus);
+            }
         }
-        returnStatus = status;
         return true;
     }
 
@@ -126,6 +133,54 @@ namespace Resty {
 
 
 
+    Http::FilterHeadersStatus RestyPluginManager::intToHeaderStatus(uint32_t intStatus) {
+        if(intStatus > enumToInt(Envoy::Http::FilterHeadersStatus::Max))
+            return Http::FilterHeadersStatus::StopIteration;
+        return static_cast<Http::FilterHeadersStatus>(intStatus);
+    }
+
+
+    Http::FilterDataStatus RestyPluginManager::intToDataStatus(uint32_t intStatus) {
+        intStatus = intStatus % 10;
+        if(intStatus > enumToInt(Envoy::Http::FilterDataStatus::Max))
+            return Http::FilterDataStatus::StopIterationNoBuffer;
+        return static_cast<Http::FilterDataStatus>(intStatus);
+    }
+
+
+    Http::FilterTrailersStatus RestyPluginManager::intToTrailerStatus(uint32_t intStatus) {
+        intStatus = intStatus % 20;
+        if(intStatus > enumToInt(Envoy::Http::FilterTrailersStatus::Max))
+            return Http::FilterTrailersStatus::StopIteration;
+        return static_cast<Http::FilterTrailersStatus>(intStatus);
+    }
+
+
+    bool RestyPluginManager::isStopIteration(uint32_t status){
+
+        if(status < enumToInt(Envoy::Http::FilterHeadersStatus::Max)) {
+            Http::FilterHeadersStatus s = intToHeaderStatus(status); 
+            return ((s == Http::FilterHeadersStatus::StopIteration) ||
+                 (s == Http::FilterHeadersStatus::StopAllIterationAndBuffer) ||
+                 (s == Http::FilterHeadersStatus::StopAllIterationAndWatermark));
+        }
+        if(status >= 10 && status < 20) {
+            Http::FilterDataStatus s = intToDataStatus(status); 
+            return ((s == Http::FilterDataStatus::StopIterationAndBuffer) ||
+                    (s == Http::FilterDataStatus::StopIterationAndWatermark) ||
+                    (s == Http::FilterDataStatus::StopIterationNoBuffer));
+        }
+        if(status >= 20) {
+            Http::FilterTrailersStatus s = intToTrailerStatus(status); 
+            return ((s == Http::FilterTrailersStatus::StopIteration));
+        }
+        ENVOY_LOG(error,"isStopIteration -- unknow status:{}",status);
+        return true;
+    }
+
+
+
+
     ///////////////////////////////////////////////////////////////////
     //////////////// decode
 
@@ -133,7 +188,6 @@ namespace Resty {
 
         auto route = decoder_callbacks_->route();
 
-        //TODO
         if(!route){
             ENVOY_LOG(debug,"not any route found");  
             return Http::FilterHeadersStatus::Continue;
@@ -146,99 +200,67 @@ namespace Resty {
         }
 
         Http::FilterHeadersStatus status = Http::FilterHeadersStatus::Continue;
-        int intStatus(0);
+        uint32_t intStatus(0);
         ENVOY_LOG(info,"RestyPluginManager -- doDecodeHeaders");
 
-        try {
-           doStep(ScriptAction::Step::DO_DECODE_HEADER,intStatus);
-
-        } catch (const Filters::Common::Lua::LuaException& e) {
-            scriptError(e);
-            status = Http::FilterHeadersStatus::StopIteration;
+        if(!doStep(ScriptAction::Step::DO_DECODE_HEADER,intStatus))
+        {
+            ENVOY_LOG(error,"doStep --- DO_DECODE_HEADER -- error: {}","excute script error,please see more in log");
+            return Http::FilterHeadersStatus::StopIteration;
         }
 
-        if(intStatus) {
-            //// TODO
-        }
-        else{
-        }
+        ENVOY_LOG(debug,"doDecodeHeaders -- status:{}",intStatus);
 
-        return status;
+        return intToHeaderStatus(intStatus);
     }
 
     Http::FilterDataStatus RestyPluginManager::doDecodeData(Buffer::Instance& data, bool end_stream) {
-        Http::FilterDataStatus status = Http::FilterDataStatus::Continue;
-        int intStatus(0);
-
+        uint32_t intStatus(0);
         ENVOY_LOG(info,"RestyPluginManager -- doDecodeData");
-        try {
-           doStep(ScriptAction::Step::DO_DECODE_DATA,intStatus);
-        } catch (const Filters::Common::Lua::LuaException& e) {
-            scriptError(e);
-            //TODO
-            status = Http::FilterDataStatus::StopIterationNoBuffer;
+        if(!doStep(ScriptAction::Step::DO_DECODE_DATA,intStatus)){
+            return Http::FilterDataStatus::StopIterationNoBuffer;
         }
-        return status;
+        return intToDataStatus(intStatus);
     }
 
     Http::FilterTrailersStatus RestyPluginManager::doDecodeTrailers(Http::HeaderMap& trailers) {
-        Http::FilterTrailersStatus status = Http::FilterTrailersStatus::Continue;
-        int intStatus(0);
+        uint32_t intStatus(0);
         ENVOY_LOG(info,"RestyPluginManager -- doDecodeTrailers");
-        try {
-           doStep(ScriptAction::Step::DO_DECODE_TRAILERS,intStatus);
-        } catch (const Filters::Common::Lua::LuaException& e) {
-            scriptError(e);
-            status = Http::FilterTrailersStatus::StopIteration;
+        if(!doStep(ScriptAction::Step::DO_DECODE_TRAILERS,intStatus)){
+            return Http::FilterTrailersStatus::StopIteration;
         }
-
-        return status;
+        return intToTrailerStatus(intStatus);
     }
 
 
 
 
     /////////////////encode
-
     Http::FilterHeadersStatus RestyPluginManager::doEncodeHeaders(Http::HeaderMap& headers, bool end_stream) {
-        Http::FilterHeadersStatus status = Http::FilterHeadersStatus::Continue;
-        int intStatus(0);
+        uint32_t intStatus(0);
         ENVOY_LOG(info,"RestyPluginManager -- doEncodeHeaders");
-
-        try {
-            doStep(ScriptAction::Step::DO_ENCODE_HEADER,intStatus);
-        } catch (const Filters::Common::Lua::LuaException& e) {
-            scriptError(e);
+        if(!doStep(ScriptAction::Step::DO_ENCODE_HEADER,intStatus)){
+            return Http::FilterHeadersStatus::StopIteration;
         }
-
-        return status;
+        return intToHeaderStatus(intStatus);
     }
 
     Http::FilterDataStatus RestyPluginManager::doEncodeData(Buffer::Instance& data, bool end_stream) {
-        Http::FilterDataStatus status = Http::FilterDataStatus::Continue;
-
-        int intStatus(0);
+        uint32_t intStatus(0);
         ENVOY_LOG(info,"RestyPluginManager -- doEncodeData");
-        try {
-            doStep(ScriptAction::Step::DO_ENCODE_DATA,intStatus);
-        } catch (const Filters::Common::Lua::LuaException& e) {
-            scriptError(e);
+        if(!doStep(ScriptAction::Step::DO_ENCODE_DATA,intStatus)){
+            return Http::FilterDataStatus::StopIterationNoBuffer;
         }
-
-        return status;
+        return intToDataStatus(intStatus);
     }
 
     Http::FilterTrailersStatus RestyPluginManager::doEncodeTrailers(Http::HeaderMap& trailers) {
-        Http::FilterTrailersStatus status = Http::FilterTrailersStatus::Continue;
-        int intStatus(0);
+        uint32_t intStatus(0);
         ENVOY_LOG(info,"RestyPluginManager -- doEncodeTrailers");
-        try {
-            doStep(ScriptAction::Step::DO_ENCODE_TRAILERS,intStatus);
-        } catch (const Filters::Common::Lua::LuaException& e) {
-            scriptError(e);
+        if(!doStep(ScriptAction::Step::DO_ENCODE_TRAILERS,intStatus)){
+            return Http::FilterTrailersStatus::StopIteration;
         }
-
-        return status;
+        return intToTrailerStatus(intStatus);
     }
 
 

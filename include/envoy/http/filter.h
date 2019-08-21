@@ -57,6 +57,8 @@ enum class FilterHeadersStatus {
   //
   // TODO(soya3129): stop metadata parsing when StopAllIterationAndWatermark is set.
   StopAllIterationAndWatermark,
+
+  Max,
 };
 
 /**
@@ -94,7 +96,9 @@ enum class FilterDataStatus {
   // body data for later dispatching. Returning FilterDataStatus::Continue from
   // decodeData()/encodeData() or calling continueDecoding()/continueEncoding() MUST be called if
   // continued filter iteration is desired.
-  StopIterationNoBuffer
+  StopIterationNoBuffer,
+
+  Max
 };
 
 /**
@@ -106,7 +110,9 @@ enum class FilterTrailersStatus {
   Continue,
   // Do not iterate to any of the remaining filters in the chain. Calling
   // continueDecoding()/continueEncoding() MUST be called if continued filter iteration is desired.
-  StopIteration
+  StopIteration,
+
+  Max
 };
 
 /**

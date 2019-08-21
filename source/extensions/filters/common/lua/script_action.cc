@@ -50,6 +50,13 @@ void ScriptAction::registerActionInterface()
     CLASS_DEF(ScriptAction, directResponse);
     CLASS_DEF(ScriptAction, direct200Response);
     lua_tinker::set( _L, "_ScriptAction", this );
+
+    CLASS_ADD(Http::LowerCaseString);
+    CLASS_ADD(Http::HeaderMap);
+    CLASS_DEF(Http::HeaderMap,byteSize);
+    //CLASS_DEF(Http::HeaderMap,addCopy);
+
+    //CLASS_DEF
 }
 
 
@@ -120,7 +127,7 @@ bool ScriptAction::initPlugin(const std::string& name,Table& config){
 
 bool ScriptAction::doScriptStep(Step step, Envoy::Http::StreamFilterCallbacks* decoderCallback, 
         Envoy::Http::StreamFilterCallbacks* encoderCallback,const std::string& name,
-        Table& config,int& status){
+        Table& config,uint32_t& status){
 
     ENVOY_LOG(debug,"do step {}: plugin {}",step,name);
     // 定义ScriptAction::Step
@@ -141,7 +148,9 @@ bool ScriptAction::doScriptStep(Step step, Envoy::Http::StreamFilterCallbacks* d
     bool result(false);
     try {
         _stream = stream;
-        result = Run<bool>(stream,buffer[i],name.c_str(),config,config,status);
+        status = Run<uint32_t>(stream,buffer[i],name.c_str(),config);
+        ENVOY_LOG(debug,"run script function: {}, return status:{}",buffer[i],status);
+        result = true;
     }
     catch (const Filters::Common::Lua::LuaException& e) {
         ENVOY_LOG(error,"Plugin error: {}",e.what());
@@ -155,17 +164,16 @@ bool ScriptAction::doScriptStep(Step step, Envoy::Http::StreamFilterCallbacks* d
 
 bool ScriptAction::directResponse(Http::Code& error_code,const char* body) {
 
-    Envoy::Http::StreamDecoderFilterCallbacks* stream = reinterpret_cast<Envoy::Http::StreamDecoderFilterCallbacks*>(_stream);
+    Envoy::Http::StreamDecoderFilterCallbacks* stream = dynamic_cast<Envoy::Http::StreamDecoderFilterCallbacks*>(_stream);
     stream->sendLocalReply(error_code, body, nullptr,absl::nullopt, "");
     return true;
 }
 
 bool ScriptAction::direct200Response(const char* body) {
-    Envoy::Http::StreamDecoderFilterCallbacks* stream = reinterpret_cast<Envoy::Http::StreamDecoderFilterCallbacks*>(_stream);
+    Envoy::Http::StreamDecoderFilterCallbacks* stream = dynamic_cast<Envoy::Http::StreamDecoderFilterCallbacks*>(_stream);
     stream->sendLocalReply(Http::Code::OK, body, nullptr,absl::nullopt, "");
     return true;
 }
-
 
 
 

@@ -22,13 +22,19 @@ class RestyPluginManager: Logger::Loggable<Logger::Id::resty> {
 
         RestyPluginManager(const RestyEnablePlugins& enablePluginList);
         virtual ~RestyPluginManager();
+            
+        Http::FilterHeadersStatus intToHeaderStatus(uint32_t intStatus);
+        Http::FilterDataStatus intToDataStatus(uint32_t intStatus);
+        Http::FilterTrailersStatus intToTrailerStatus(uint32_t intStatus);
+
+        bool isStopIteration(uint32_t status);
 
     public:
         bool initAllPlugin();
         void scriptError(const Filters::Common::Lua::LuaException& e);
         virtual void scriptLog(spdlog::level::level_enum level, const char* message);
 
-        bool doStep(ScriptAction::Step step,int& status);
+        bool doStep(ScriptAction::Step step,uint32_t& status);
     public:
 
         Http::FilterHeadersStatus doDecodeHeaders(Http::HeaderMap& headers, bool end_stream);

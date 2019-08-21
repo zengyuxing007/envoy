@@ -7,6 +7,7 @@
 #include "extensions/filters/common/lua/script_action.h"
 #include "extensions/filters/http/resty/plugins_manager.h"
 #include "extensions/filters/http/well_known_names.h"
+#include "common/buffer/buffer_impl.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -18,6 +19,14 @@ namespace Resty {
  */
 class Filter : public Http::StreamFilter, Logger::Loggable<Logger::Id::resty> {
 public:
+    enum class Error {
+        PayloadTooLarge,
+        JsonParseError,
+        TemplateParseError,
+        TransformationNotFound,
+    };
+
+public:
   Filter(RestyPluginManagerConstSharedPtr resty_plugin_manager) : resty_plugin_manager_(resty_plugin_manager) {
       resty_plugin_manager->initAllPlugin();
   }
@@ -25,6 +34,12 @@ public:
 
   // Http::StreamFilterBase
   void onDestroy() override;
+
+  void resetInternalState();
+  void error(Error error, std::string msg = "");
+  bool is_error();
+  void requestError();
+  void responseError();
 
   // Http::StreamDecoderFilter
   Http::FilterHeadersStatus decodeHeaders(Http::HeaderMap& headers, bool end_stream) override {
@@ -65,8 +80,17 @@ public:
 private:
    bool destroyed_{};
    RestyPluginManagerConstSharedPtr  resty_plugin_manager_;
-   Http::StreamDecoderFilterCallbacks* decoder_callbacks_;
-   Http::StreamEncoderFilterCallbacks* encoder_callbacks_;
+   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{};
+   Http::StreamEncoderFilterCallbacks* encoder_callbacks_{};
+   Http::HeaderMap *request_headers_{nullptr};
+   Http::HeaderMap *response_headers_{nullptr};
+   Buffer::OwnedImpl request_body_{};
+   Buffer::OwnedImpl response_body_{};
+
+   absl::optional<Error> error_;
+   Http::Code error_code_;
+   std::string error_messgae_;
+
 };
 
 } // namespace Resty

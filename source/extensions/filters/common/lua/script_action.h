@@ -65,7 +65,7 @@ public:
 
     bool doScriptStep(Step step, Envoy::Http::StreamFilterCallbacks* decoderCallback, 
             Envoy::Http::StreamFilterCallbacks* encoderCallback,const std::string& name,
-            Table& config,int& status);
+            Table& config,uint32_t& status);
 
     bool scriptDecodeHeaders(const std::string& name,Table& config);
     bool directResponse(Http::Code& error_code,const char* body);
