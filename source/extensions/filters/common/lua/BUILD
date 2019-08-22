@@ -15,6 +15,7 @@ envoy_cc_library(
             "lua_tinker.cc",
             "script.cc",
             "script_action.cc",
+            "utility.cc",
            ],
 
     hdrs = [
@@ -24,6 +25,7 @@ envoy_cc_library(
             "script.inl",
             "script_action.h",
             "script_action.inl",
+            "utility.h",
            ],
 
     external_deps = [

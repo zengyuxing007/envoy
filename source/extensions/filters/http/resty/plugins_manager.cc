@@ -1,5 +1,6 @@
 #include "extensions/filters/http/resty/plugins_manager.h"
 #include "extensions/filters/common/lua/lua.h"
+#include "extensions/filters/common/lua/utility.h"
 #include <google/protobuf/struct.pb.h>
 #include "common/common/enum_to_int.h"
 
@@ -18,6 +19,7 @@ namespace Resty {
     }
 
 
+
     std::shared_ptr<Table> RestyPluginManager::pluginConfigToTable(ScriptAction* sa,const RestyPluginProto& p)
     {
         Table* table = sa->newNullTable();
@@ -25,11 +27,7 @@ namespace Resty {
         if(p.has_config())
         {
             ///change struct to Table (lua)
-            auto p_config = p.config();
-            auto fields_map = p_config.fields();
-            for(auto &iter: fields_map) {
-                table->set(iter.first.c_str(),iter.second.string_value().c_str());
-            }
+            Filters::Common::Lua::Utility::protobufStatus2LuaTable(p.config(),table,sa);
         }
         return tablePtr;
     }

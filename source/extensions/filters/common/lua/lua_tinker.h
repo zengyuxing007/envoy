@@ -9,13 +9,6 @@
 #if !defined(_LUA_TINKER_H_)
 #define _LUA_TINKER_H_
 
-/*
-extern "C" {
-#include "lua/lua.h"
-#include "lua/lualib.h"
-#include "lua/lauxlib.h"
-}
-*/
 #include "luajit-2.1/lua.hpp"
 
 #include <new>
@@ -1633,8 +1626,9 @@ struct table
     table_obj*		m_obj;
 };
 
+
 } // namespace lua_tinker
 
-typedef lua_tinker::table Table;
+using Table = lua_tinker::table;
 
 #endif //_LUA_TINKER_H_
