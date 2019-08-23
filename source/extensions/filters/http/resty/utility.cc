@@ -1,10 +1,12 @@
 #include "extensions/filters/http/resty/utility.h"
-#include "extensions/filters/common/lua/lua_tinker.h"
-#include "extensions/filters/http/resty/script_action.h"
+
+#include "common/common/fmt.h"
 #include "common/config/utility.h"
 #include "common/protobuf/message_validator_impl.h"
-#include "common/common/fmt.h"
+
+#include "extensions/filters/common/lua/lua_tinker.h"
 #include "extensions/filters/common/lua/utility.h"
+#include "extensions/filters/http/resty/script_action.h"
 
 namespace Envoy {
 namespace Extensions {

@@ -10,6 +10,7 @@
 #include "common/config/resources.h"
 #include "common/config/utility.h"
 #include "common/protobuf/utility.h"
+
 #include "extensions/filters/http/resty/utility.h"
 
 namespace Envoy {

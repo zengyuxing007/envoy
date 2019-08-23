@@ -244,7 +244,6 @@ envoy_cc_library(
         "//source/common/protobuf:utility_lib",
         "//source/extensions/filters/http/resty:resty_filter_lib",
         "@envoy_api//envoy/api/v2:lds_cc",
-    
     ],
 )
 
