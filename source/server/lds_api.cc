@@ -10,6 +10,7 @@
 #include "common/config/resources.h"
 #include "common/config/utility.h"
 #include "common/protobuf/utility.h"
+#include "extensions/filters/http/resty/utility.h"
 
 namespace Envoy {
 namespace Server {
@@ -52,6 +53,10 @@ void LdsApiImpl::onConfigUpdate(
       listener = MessageUtil::anyConvert<envoy::api::v2::Listener>(resource.resource(),
                                                                    validation_visitor_);
       MessageUtil::validate(listener);
+
+      // check resty schema
+      Extensions::HttpFilters::Resty::Utility::validateRestySchema(listener);
+
       if (!listener_names.insert(listener.name()).second) {
         // NOTE: at this point, the first of these duplicates has already been successfully applied.
         throw EnvoyException(fmt::format("duplicate listener {} found", listener.name()));
