@@ -436,7 +436,6 @@ void HeaderMapImpl::addCopy(const LowerCaseString& key, const std::string& value
   ASSERT(new_value.empty()); // NOLINT(bugprone-use-after-move)
 }
 
-
 void HeaderMapImpl::replace(const LowerCaseString& key, const std::string& value) {
 
   auto* entry = get(key);

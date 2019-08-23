@@ -11,26 +11,24 @@ envoy_package()
 envoy_cc_library(
     name = "lua_lib",
     srcs = [
-            "lua.cc",
-            "lua_tinker.cc",
-            "script.cc",
-            "utility.cc",
-           ],
-
+        "lua.cc",
+        "lua_tinker.cc",
+        "script.cc",
+        "utility.cc",
+    ],
     hdrs = [
-            "lua.h",
-            "lua_tinker.h",
-            "script.h",
-            "script.inl",
-            "utility.h",
-           ],
-
+        "lua.h",
+        "lua_tinker.h",
+        "script.h",
+        "script.inl",
+        "utility.h",
+    ],
     external_deps = [
         "luajit",
     ],
     deps = [
-        "//include/envoy/thread_local:thread_local_interface",
         "//include/envoy/http:filter_interface",
+        "//include/envoy/thread_local:thread_local_interface",
         "//source/common/common:assert_lib",
         "//source/common/common:c_smart_ptr_lib",
         "//source/common/common:lock_guard_lib",
@@ -49,4 +47,3 @@ envoy_cc_library(
         "//source/common/protobuf",
     ],
 )
-

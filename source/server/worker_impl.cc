@@ -9,7 +9,7 @@
 #include "envoy/thread_local/thread_local.h"
 
 #include "server/connection_handler_impl.h"
-#include "extensions/filters/http/resty/script_action.h"
+
 #include "extensions/filters/http/resty/script_action.h"
 
 namespace Envoy {
@@ -102,8 +102,9 @@ void WorkerImpl::stopListeners() {
 void WorkerImpl::threadRoutine(GuardDog& guard_dog) {
   ENVOY_LOG(debug, "worker entering dispatch loop");
 
-  //init lua script (local)
-  Envoy::Extensions::HttpFilters::Resty::gScriptAction.createThreadScriptAction(api_.threadFactory().currentThreadId().id());
+  // init lua script (local)
+  Envoy::Extensions::HttpFilters::Resty::gScriptAction.createThreadScriptAction(
+      api_.threadFactory().currentThreadId().id());
 
   auto watchdog = guard_dog.createWatchDog(api_.threadFactory().currentThreadId());
   watchdog->startWatchdog(*dispatcher_);

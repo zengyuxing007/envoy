@@ -448,14 +448,14 @@ Gauge& ThreadLocalStoreImpl::ScopeImpl::gaugeFromStatName(StatName name,
     tls_rejected_stats = &entry.rejected_stats_;
   }
 
-  Gauge& gauge = safeMakeStat<Gauge>(
-      final_stat_name, central_cache_.gauges_, central_cache_.rejected_stats_,
-      [import_mode](StatDataAllocator& allocator, StatName name,
-                    absl::string_view tag_extracted_name,
-                    const std::vector<Tag>& tags) -> GaugeSharedPtr {
-        return allocator.makeGauge(name, tag_extracted_name, tags, import_mode);
-      },
-      tls_cache, tls_rejected_stats, parent_.null_gauge_);
+  Gauge& gauge =
+      safeMakeStat<Gauge>(final_stat_name, central_cache_.gauges_, central_cache_.rejected_stats_,
+                          [import_mode](StatDataAllocator& allocator, StatName name,
+                                        absl::string_view tag_extracted_name,
+                                        const std::vector<Tag>& tags) -> GaugeSharedPtr {
+                            return allocator.makeGauge(name, tag_extracted_name, tags, import_mode);
+                          },
+                          tls_cache, tls_rejected_stats, parent_.null_gauge_);
   gauge.mergeImportMode(import_mode);
   return gauge;
 }

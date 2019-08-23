@@ -40,8 +40,8 @@ public:
     std::vector<const char*> argv;
     std::transform(words.cbegin(), words.cend(), std::back_inserter(argv),
                    [](const std::string& arg) { return arg.c_str(); });
-    return std::make_unique<OptionsImpl>(
-        argv.size(), argv.data(), [](bool) { return "1"; }, spdlog::level::warn);
+    return std::make_unique<OptionsImpl>(argv.size(), argv.data(), [](bool) { return "1"; },
+                                         spdlog::level::warn);
   }
 };
 

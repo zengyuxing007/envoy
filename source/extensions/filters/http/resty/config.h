@@ -14,7 +14,8 @@ namespace Resty {
 /**
  * Config registration for the Resty filter. @see NamedHttpFilterConfigFactory.
  */
-class RestyFilterConfig : public Common::FactoryBase<envoy::config::filter::http::resty::v2::EnablePlugins> {
+class RestyFilterConfig
+    : public Common::FactoryBase<envoy::config::filter::http::resty::v2::EnablePlugins> {
 public:
   RestyFilterConfig() : FactoryBase(HttpFilterNames::get().Resty) {}
 
@@ -23,10 +24,9 @@ public:
                       Server::Configuration::FactoryContext& context) override;
 
 private:
-  Http::FilterFactoryCb
-  createFilterFactoryFromProtoTyped(const envoy::config::filter::http::resty::v2::EnablePlugins& proto_config,
-                                    const std::string&,
-                                    Server::Configuration::FactoryContext& context) override;
+  Http::FilterFactoryCb createFilterFactoryFromProtoTyped(
+      const envoy::config::filter::http::resty::v2::EnablePlugins& proto_config, const std::string&,
+      Server::Configuration::FactoryContext& context) override;
 };
 
 } // namespace Resty

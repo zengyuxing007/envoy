@@ -1,11 +1,12 @@
 #pragma once
 
-
 #include "envoy/http/filter.h"
-#include "extensions/filters/http/resty/script_action.h"
-#include "extensions/filters/http/resty/plugins_manager.h"
-#include "extensions/filters/http/well_known_names.h"
+
 #include "common/buffer/buffer_impl.h"
+
+#include "extensions/filters/http/resty/plugins_manager.h"
+#include "extensions/filters/http/resty/script_action.h"
+#include "extensions/filters/http/well_known_names.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -17,18 +18,18 @@ namespace Resty {
  */
 class Filter : public Http::StreamFilter, Logger::Loggable<Logger::Id::resty> {
 public:
-    enum class Error {
-        PayloadTooLarge,
-        JsonParseError,
-        TemplateParseError,
-        TransformationNotFound,
-    };
+  enum class Error {
+    PayloadTooLarge,
+    JsonParseError,
+    TemplateParseError,
+    TransformationNotFound,
+  };
 
 public:
-  Filter(RestyPluginManagerConstSharedPtr resty_plugin_manager) : resty_plugin_manager_(resty_plugin_manager) {
-      //resty_plugin_manager->initAllPlugin();
+  Filter(RestyPluginManagerConstSharedPtr resty_plugin_manager)
+      : resty_plugin_manager_(resty_plugin_manager) {
+    // resty_plugin_manager->initAllPlugin();
   }
-
 
   // Http::StreamFilterBase
   void onDestroy() override;
@@ -76,24 +77,21 @@ public:
   };
 
 private:
-   bool destroyed_{};
-   RestyPluginManagerConstSharedPtr  resty_plugin_manager_;
-   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{};
-   Http::StreamEncoderFilterCallbacks* encoder_callbacks_{};
-   Http::HeaderMap *request_headers_{nullptr};
-   Http::HeaderMap *response_headers_{nullptr};
-   Buffer::OwnedImpl request_body_{};
-   Buffer::OwnedImpl response_body_{};
+  bool destroyed_{};
+  RestyPluginManagerConstSharedPtr resty_plugin_manager_;
+  Http::StreamDecoderFilterCallbacks* decoder_callbacks_{};
+  Http::StreamEncoderFilterCallbacks* encoder_callbacks_{};
+  Http::HeaderMap* request_headers_{nullptr};
+  Http::HeaderMap* response_headers_{nullptr};
+  Buffer::OwnedImpl request_body_{};
+  Buffer::OwnedImpl response_body_{};
 
-   absl::optional<Error> error_;
-   Http::Code error_code_;
-   std::string error_messgae_;
-
+  absl::optional<Error> error_;
+  Http::Code error_code_;
+  std::string error_messgae_;
 };
 
 } // namespace Resty
 } // namespace HttpFilters
 } // namespace Extensions
 } // namespace Envoy
-
-

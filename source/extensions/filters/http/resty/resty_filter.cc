@@ -1,17 +1,19 @@
+#include "extensions/filters/http/resty/resty_filter.h"
+
 #include <memory>
+
 #include "envoy/http/codes.h"
+
 #include "common/buffer/buffer_impl.h"
 #include "common/common/assert.h"
 #include "common/common/enum_to_int.h"
 #include "common/crypto/utility.h"
 #include "common/http/message_impl.h"
-#include "extensions/filters/http/resty/resty_filter.h"
 
 namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
 namespace Resty {
-
 
 struct RcDetailsValues {
   // The fault filter injected an abort for this request.
@@ -19,23 +21,20 @@ struct RcDetailsValues {
 };
 typedef ConstSingleton<RcDetailsValues> RcDetails;
 
-
 void Filter::onDestroy() {
-//  destroyed_ = true;
-    resetInternalState();
+  //  destroyed_ = true;
+  resetInternalState();
 }
 
-
 void Filter::requestError() {
-  ENVOY_LOG(debug,"requestError");
+  ENVOY_LOG(debug, "requestError");
   ASSERT(is_error());
-  decoder_callbacks_->sendLocalReply(error_code_, error_messgae_, nullptr,
-                                     absl::nullopt,
+  decoder_callbacks_->sendLocalReply(error_code_, error_messgae_, nullptr, absl::nullopt,
                                      RcDetails::get().RestyError);
 }
 
 void Filter::responseError() {
-  ENVOY_LOG(debug,"responseError");
+  ENVOY_LOG(debug, "responseError");
   ASSERT(is_error());
   response_headers_->Status()->value(enumToInt(error_code_));
   Buffer::OwnedImpl data(error_messgae_);
@@ -44,12 +43,10 @@ void Filter::responseError() {
   encoder_callbacks_->addEncodedData(data, false);
 }
 
-
 void Filter::resetInternalState() {
   request_body_.drain(request_body_.length());
   response_body_.drain(response_body_.length());
 }
-
 
 void Filter::error(Error error, std::string msg) {
   error_ = error;
@@ -86,8 +83,6 @@ void Filter::error(Error error, std::string msg) {
 }
 
 bool Filter::is_error() { return error_.has_value(); }
-
-
 
 } // namespace Resty
 } // namespace HttpFilters

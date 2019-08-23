@@ -383,7 +383,6 @@ public:
    */
   uint64_t registerGlobal(const std::string& global);
 
-
   uint64_t registerGlobalVariable(const std::string& globalVariable);
 
   /**
@@ -413,7 +412,7 @@ public:
 private:
   struct LuaThreadLocal : public ThreadLocal::ThreadLocalObject {
     LuaThreadLocal(const std::string& code);
-    LuaThreadLocal(const std::string& scriptFile,bool isScriptFile);
+    LuaThreadLocal(const std::string& scriptFile, bool isScriptFile);
 
     CSmartPtr<lua_State, lua_close> state_;
     std::vector<int> global_slots_;

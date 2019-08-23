@@ -23,8 +23,8 @@ Http::FilterFactoryCb RestyFilterConfig::createFilterFactoryFromProtoTyped(
 
 Http::FilterFactoryCb
 RestyFilterConfig::createFilterFactory(const Json::Object& json_config,
-                                     const std::string& stat_prefix,
-                                     Server::Configuration::FactoryContext& context) {
+                                       const std::string& stat_prefix,
+                                       Server::Configuration::FactoryContext& context) {
 
   NOT_IMPLEMENTED_GCOVR_EXCL_LINE;
   /*

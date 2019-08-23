@@ -43,33 +43,3 @@ public:
      */
     virtual void onJwksError(Failure reason) PURE;
   };
-
-  virtual ~JwksFetcher() = default;
-
-  /*
-   * Cancel any in-flight request.
-   */
-  virtual void cancel() PURE;
-
-  /*
-   * Retrieve a JWKS resource from a remote HTTP host.
-   * At most one outstanding request may be in-flight,
-   * i.e. from the invocation of `fetch()` until either
-   * a callback or `cancel()` is invoked, no
-   * additional `fetch()` may be issued.
-   * @param uri the uri to retrieve the jwks from.
-   * @param receiver the receiver of the fetched JWKS or error.
-   */
-  virtual void fetch(const ::envoy::api::v2::core::HttpUri& uri, JwksReceiver& receiver) PURE;
-
-  /*
-   * Factory method for creating a JwksFetcher.
-   * @param cm the cluster manager to use during Jwks retrieval
-   * @return a JwksFetcher instance
-   */
-  static JwksFetcherPtr create(Upstream::ClusterManager& cm);
-};
-} // namespace Common
-} // namespace HttpFilters
-} // namespace Extensions
-} // namespace Envoy

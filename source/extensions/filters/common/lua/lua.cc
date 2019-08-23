@@ -1,11 +1,12 @@
 #include "extensions/filters/common/lua/lua.h"
-#include "extensions/filters/common/lua/lua_tinker.h"
 
 #include <memory>
 
 #include "envoy/common/exception.h"
 
 #include "common/common/assert.h"
+
+#include "extensions/filters/common/lua/lua_tinker.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -64,7 +65,6 @@ ThreadLocalState::ThreadLocalState(const std::string& code, ThreadLocal::SlotAll
   });
 }
 
-
 bool ThreadLocalState::init(const std::string& scriptPath, ThreadLocal::SlotAllocator& tls) {
 
   tls_slot_ = tls.allocateSlot();
@@ -82,12 +82,12 @@ bool ThreadLocalState::init(const std::string& scriptPath, ThreadLocal::SlotAllo
   bool isScriptPath = true;
 
   // Now initialize on all threads.
-  tls_slot_->set([initScriptFile,isScriptPath](Event::Dispatcher&) {
-    return ThreadLocal::ThreadLocalObjectSharedPtr{new LuaThreadLocal(initScriptFile,isScriptPath)};
+  tls_slot_->set([initScriptFile, isScriptPath](Event::Dispatcher&) {
+    return ThreadLocal::ThreadLocalObjectSharedPtr{
+        new LuaThreadLocal(initScriptFile, isScriptPath)};
   });
   return true;
 }
-
 
 int ThreadLocalState::getGlobalRef(uint64_t slot) {
   LuaThreadLocal& tls = tls_slot_->getTyped<LuaThreadLocal>();
@@ -97,15 +97,14 @@ int ThreadLocalState::getGlobalRef(uint64_t slot) {
 
 uint64_t ThreadLocalState::registerGlobalVariable(const std::string& globalVariable) {
 
-    tls_slot_->runOnAllThreads([this,globalVariable] {
-        LuaThreadLocal& tls = tls_slot_->getTyped<LuaThreadLocal>();
-        //TODO
-        //lua_State* L = tls.state_.get();
-        //lua_tinker::set( L, "_ScriptAction", this );
-    });
-    return current_global_slot_++;
+  tls_slot_->runOnAllThreads([this, globalVariable] {
+    LuaThreadLocal& tls = tls_slot_->getTyped<LuaThreadLocal>();
+    // TODO
+    // lua_State* L = tls.state_.get();
+    // lua_tinker::set( L, "_ScriptAction", this );
+  });
+  return current_global_slot_++;
 }
-
 
 uint64_t ThreadLocalState::registerGlobal(const std::string& global) {
   tls_slot_->runOnAllThreads([this, global]() {
@@ -134,14 +133,14 @@ ThreadLocalState::LuaThreadLocal::LuaThreadLocal(const std::string& code) : stat
   ASSERT(rc == 0);
 }
 
-ThreadLocalState::LuaThreadLocal::LuaThreadLocal(const std::string& initScriptFile,bool isScriptFile) : state_(lua_open()) {
+ThreadLocalState::LuaThreadLocal::LuaThreadLocal(const std::string& initScriptFile,
+                                                 bool isScriptFile)
+    : state_(lua_open()) {
   luaL_openlibs(state_.get());
   isScriptFile = isScriptFile;
   int rc = luaL_dofile(state_.get(), initScriptFile.c_str());
   ASSERT(rc == 0);
 }
-
-
 
 } // namespace Lua
 } // namespace Common

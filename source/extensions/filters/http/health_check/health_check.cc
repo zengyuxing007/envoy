@@ -174,14 +174,13 @@ void HealthCheckFilter::onComplete() {
     }
   }
 
-  callbacks_->sendLocalReply(
-      final_status, "",
-      [degraded](auto& headers) {
-        if (degraded) {
-          headers.insertEnvoyDegraded();
-        }
-      },
-      absl::nullopt, *details);
+  callbacks_->sendLocalReply(final_status, "",
+                             [degraded](auto& headers) {
+                               if (degraded) {
+                                 headers.insertEnvoyDegraded();
+                               }
+                             },
+                             absl::nullopt, *details);
 }
 
 } // namespace HealthCheck

@@ -44,6 +44,7 @@
 #include "server/guarddog_impl.h"
 #include "server/listener_hooks.h"
 #include "server/ssl_context_manager.h"
+
 #include "extensions/filters/http/resty/script_action.h"
 
 namespace Envoy {
@@ -380,8 +381,8 @@ void InstanceImpl::initialize(const Options& options,
   config_.initialize(bootstrap_, *this, *cluster_manager_factory_);
   http_context_.setTracer(config_.httpTracer());
 
-  //TODO
-  //add bootstrap -- init file path
+  // TODO
+  // add bootstrap -- init file path
   Envoy::Extensions::HttpFilters::Resty::gScriptAction.init("/etc/envoy/script/init.lua");
 
   // Instruct the listener manager to create the LDS provider if needed. This must be done later

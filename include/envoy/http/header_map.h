@@ -537,9 +537,8 @@ public:
    */
   virtual void dumpState(std::ostream& os, int indent_level = 0) const PURE;
 
-
   /**
-   * replace 
+   * replace
    */
   virtual void replace(const LowerCaseString& key, const std::string& value) PURE;
 

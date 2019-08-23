@@ -11,24 +11,23 @@ load(
 
 envoy_package()
 
-
 envoy_cc_library(
     name = "resty_filter_lib",
     srcs = [
-            "resty_filter.cc",
-            "plugin.cc",
-            "plugins_manager.cc",
-            "script_action.cc",
-            "wrappers.cc",
-            ],
+        "plugin.cc",
+        "plugins_manager.cc",
+        "resty_filter.cc",
+        "script_action.cc",
+        "wrappers.cc",
+    ],
     hdrs = [
-            "resty_filter.h",
-            "plugin.h",
-            "plugins_manager.h",
-            "script_action.h",
-            "script_action.inl",
-            "wrappers.h",
-            ],
+        "plugin.h",
+        "plugins_manager.h",
+        "resty_filter.h",
+        "script_action.h",
+        "script_action.inl",
+        "wrappers.h",
+    ],
     deps = [
         "//include/envoy/http:codes_interface",
         "//include/envoy/http:filter_interface",

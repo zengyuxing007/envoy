@@ -13,12 +13,10 @@ import "validate/validate.proto";
 // [#protodoc-title: Lua]
 // Lua :ref:`configuration overview <config_http_filters_lua>`.
 
-
 message LuaPlugin {
-    string name = 1;
-    //google.protobuf.Any config = 2;
-    string config = 2;
-
+  string name = 1;
+  // google.protobuf.Any config = 2;
+  string config = 2;
 }
 
 message Lua {
@@ -29,9 +27,7 @@ message Lua {
   string inline_code = 1 [(validate.rules).string.min_bytes = 1];
 
   string script_dir = 2 [(validate.rules).string.min_bytes = 1];
-  
+
   // enabled the plugin list and config
-  repeated LuaPlugin plugins = 3  ;
-
-
+  repeated LuaPlugin plugins = 3;
 }

@@ -17,7 +17,6 @@ load(
 )
 load("//bazel:repositories.bzl", "NOBORINGSSL_SKIP_TARGETS", "PPC_SKIP_TARGETS")
 
-
 envoy_package()
 
 load("@envoy_api//bazel:api_build_system.bzl", "api_proto_library")
