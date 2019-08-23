@@ -46,6 +46,7 @@
 #include "server/ssl_context_manager.h"
 
 #include "extensions/filters/http/resty/script_action.h"
+#include "extensions/filters/http/resty/utility.h"
 
 namespace Envoy {
 namespace Server {
@@ -230,6 +231,14 @@ InstanceUtil::BootstrapVersion InstanceUtil::loadBootstrapConfig(
     bootstrap.MergeFrom(bootstrap_override);
   }
   MessageUtil::validate(bootstrap);
+
+  // check resty schema
+  const auto& listeners = bootstrap.static_resources().listeners();
+  for (int i = 0; i < listeners.size(); ++i) {
+    ENVOY_LOG(debug, "Check resty schema for listener #{}:", i);
+    Extensions::HttpFilters::Resty::Utility::validateRestySchema(listeners[i]);
+  }
+
   return BootstrapVersion::V2;
 }
 
@@ -267,6 +276,10 @@ void InstanceImpl::initialize(const Options& options,
   Buffer::OwnedImpl::useOldImpl(options.libeventBufferEnabled());
   ENVOY_LOG(info, "buffer implementation: {}",
             Buffer::OwnedImpl().usesOldImpl() ? "old (libevent)" : "new");
+
+  // TODO
+  // add bootstrap -- init file path
+  Envoy::Extensions::HttpFilters::Resty::gScriptAction.init("/etc/envoy/script/init.lua");
 
   // Handle configuration that needs to take place prior to the main configuration load.
   InstanceUtil::loadBootstrapConfig(bootstrap_, options, messageValidationVisitor(), *api_);
@@ -380,10 +393,6 @@ void InstanceImpl::initialize(const Options& options,
   // cluster_manager_factory_ is available.
   config_.initialize(bootstrap_, *this, *cluster_manager_factory_);
   http_context_.setTracer(config_.httpTracer());
-
-  // TODO
-  // add bootstrap -- init file path
-  Envoy::Extensions::HttpFilters::Resty::gScriptAction.init("/etc/envoy/script/init.lua");
 
   // Instruct the listener manager to create the LDS provider if needed. This must be done later
   // because various items do not yet exist when the listener manager is created.

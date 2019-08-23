@@ -18,6 +18,7 @@ envoy_cc_library(
         "plugins_manager.cc",
         "resty_filter.cc",
         "script_action.cc",
+        "utility.cc",
         "wrappers.cc",
     ],
     hdrs = [
@@ -26,6 +27,7 @@ envoy_cc_library(
         "resty_filter.h",
         "script_action.h",
         "script_action.inl",
+        "utility.h",
         "wrappers.h",
     ],
     deps = [
@@ -34,13 +36,19 @@ envoy_cc_library(
         "//include/envoy/upstream:cluster_manager_interface",
         "//source/common/buffer:buffer_lib",
         "//source/common/common:enum_to_int",
+        "//source/common/config:utility_lib",
         "//source/common/crypto:utility_lib",
         "//source/common/http:message_lib",
         "//source/common/http:utility_lib",
+        "//source/common/protobuf:message_validator_lib",
         "//source/extensions/filters/common/lua:lua_lib",
         "//source/extensions/filters/common/lua:wrappers_lib",
         "//source/extensions/filters/http:well_known_names",
+        "//source/extensions/filters/network:well_known_names",
+        "@envoy_api//envoy/api/v2:lds_cc",
+        "@envoy_api//envoy/api/v2/listener:listener_cc",
         "@envoy_api//envoy/config/filter/http/resty/v2:resty_cc",
+        "@envoy_api//envoy/config/filter/network/http_connection_manager/v2:http_connection_manager_cc",
     ],
 )
 
