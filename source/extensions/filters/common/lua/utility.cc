@@ -1,6 +1,6 @@
 #include "extensions/filters/common/lua/utility.h"
 #include "extensions/filters/common/lua/lua_tinker.h"
-#include "extensions/filters/common/lua/script_action.h"
+#include "extensions/filters/common/lua/script.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -10,7 +10,7 @@ namespace Lua {
 
 
  
-void Utility::protobufListValue2LuaTable(const ProtobufWkt::ListValue& listValue,::Table* table,ScriptAction* sa) {
+void Utility::protobufListValue2LuaTable(const ProtobufWkt::ListValue& listValue,::Table* table,Script* sa) {
 
         if(listValue.values_size() <1) return;
 
@@ -62,7 +62,7 @@ void Utility::protobufListValue2LuaTable(const ProtobufWkt::ListValue& listValue
 }
 
 
-void Utility::protobufStatus2LuaTable(const ProtobufWkt::Struct& s1, ::Table* table,ScriptAction* sa){
+void Utility::protobufStatus2LuaTable(const ProtobufWkt::Struct& s1, ::Table* table,Script* sa){
       for (const auto& iter : s1.fields()) {
             auto kind = iter.second.kind_case();
             switch(kind) {

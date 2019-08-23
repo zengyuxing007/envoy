@@ -428,6 +428,7 @@ envoy_cc_library(
         "//include/envoy/thread:thread_interface",
         "//include/envoy/thread_local:thread_local_interface",
         "//source/extensions/filters/common/lua:lua_lib",
+        "//source/extensions/filters/http/resty:resty_filter_lib",
     ],
 )
 

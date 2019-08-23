@@ -2,9 +2,7 @@
 
 
 #include "envoy/http/filter.h"
-//#include "envoy/upstream/cluster_manager.h"
-
-#include "extensions/filters/common/lua/script_action.h"
+#include "extensions/filters/http/resty/script_action.h"
 #include "extensions/filters/http/resty/plugins_manager.h"
 #include "extensions/filters/http/well_known_names.h"
 #include "common/buffer/buffer_impl.h"

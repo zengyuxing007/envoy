@@ -1,14 +1,11 @@
-#include "extensions/filters/http/resty/resty_filter.h"
-
 #include <memory>
-
 #include "envoy/http/codes.h"
-
 #include "common/buffer/buffer_impl.h"
 #include "common/common/assert.h"
 #include "common/common/enum_to_int.h"
 #include "common/crypto/utility.h"
 #include "common/http/message_impl.h"
+#include "extensions/filters/http/resty/resty_filter.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -89,8 +86,6 @@ void Filter::error(Error error, std::string msg) {
 }
 
 bool Filter::is_error() { return error_.has_value(); }
-
-
 
 
 

@@ -8,9 +8,8 @@
 
 namespace Envoy {
 namespace Extensions {
-namespace Filters {
-namespace Common {
-namespace Lua {
+namespace HttpFilters {
+namespace Resty {
 
 
 struct DeletePair
@@ -29,6 +28,7 @@ std::for_each(m.begin(),m.end(),DeletePair()); \
 m.clear();
 
 
+using Script = ::Envoy::Extensions::Filters::Common::Lua::Script;
 
 class ScriptAction:public Script
 {
@@ -102,13 +102,12 @@ private:
 
 };
 
-#include "extensions/filters/common/lua/script_action.inl"
+#include "extensions/filters/http/resty/script_action.inl"
 
 extern ScriptAction gScriptAction;
 
 
-} // namespace Lua
-} // namespace Common
-} // namespace Filters
+} // namespace Resty
+} // namespace HttpFilters
 } // namespace Extensions
 } // namespace Envoy

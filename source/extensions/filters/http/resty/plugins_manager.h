@@ -6,7 +6,7 @@
 #include "extensions/filters/common/lua/lua_tinker.h"
 #include "extensions/filters/http/resty/plugin.h"
 #include "envoy/config/filter/http/resty/v2/resty.pb.h" 
-#include "extensions/filters/common/lua/script_action.h"
+#include "extensions/filters/http/resty/script_action.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -18,7 +18,7 @@ class RestyPluginManager: Logger::Loggable<Logger::Id::resty> {
 
     public:
         using RestyEnablePlugins = envoy::config::filter::http::resty::v2::EnablePlugins;
-        using ScriptAction = Envoy::Extensions::Filters::Common::Lua::ScriptAction;
+        using ScriptAction = Envoy::Extensions::HttpFilters::Resty::ScriptAction;
         using RestyPluginProto = envoy::config::filter::http::resty::v2::Plugin;
 
         RestyPluginManager(const RestyEnablePlugins& enablePluginList);

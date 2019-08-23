@@ -36,7 +36,7 @@ namespace Resty {
     bool RestyPluginManager::checkPluginSchema()
     {
         auto tid = std::this_thread::get_id();
-        ScriptAction* sa = Envoy::Extensions::Filters::Common::Lua::gScriptAction.getThreadScriptAction(tid);
+        ScriptAction* sa = gScriptAction.getThreadScriptAction(tid);
 
         if(sa == NULL){
             ENVOY_LOG(error,"checkPluginSchema error: not found ScriptAction by threadId-{}",tid);
@@ -60,7 +60,7 @@ namespace Resty {
     bool RestyPluginManager::initAllPlugin()
     {
         auto tid = std::this_thread::get_id();
-        ScriptAction* sa = Envoy::Extensions::Filters::Common::Lua::gScriptAction.getThreadScriptAction(tid);
+        ScriptAction* sa = gScriptAction.getThreadScriptAction(tid);
 
         if(sa == NULL){
             ENVOY_LOG(error,"initAllPlugin error: not found ScriptAction by threadId-{}",tid);
@@ -84,7 +84,7 @@ namespace Resty {
     bool RestyPluginManager::doStep(ScriptAction::Step step,uint32_t& returnStatus)
     {
         auto tid = std::this_thread::get_id();
-        ScriptAction* sa = Envoy::Extensions::Filters::Common::Lua::gScriptAction.getThreadScriptAction(tid);
+        ScriptAction* sa = gScriptAction.getThreadScriptAction(tid);
 
         if(sa == NULL){
             ENVOY_LOG(error,"doStep:{} error: not found ScriptAction by threadId-{}",step,tid);

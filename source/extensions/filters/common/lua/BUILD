@@ -14,7 +14,6 @@ envoy_cc_library(
             "lua.cc",
             "lua_tinker.cc",
             "script.cc",
-            "script_action.cc",
             "utility.cc",
            ],
 
@@ -23,8 +22,6 @@ envoy_cc_library(
             "lua_tinker.h",
             "script.h",
             "script.inl",
-            "script_action.h",
-            "script_action.inl",
             "utility.h",
            ],
 

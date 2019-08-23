@@ -1,13 +1,14 @@
-#include "extensions/filters/common/lua/script_action.h"
+#include "extensions/filters/http/resty/script_action.h"
 #include "extensions/filters/common/lua/lua.h"
+#include "extensions/filters/common/lua/wrappers.h"
+#include "extensions/filters/http/resty/wrappers.h"
 #include "envoy/http/codes.h"
 
 
 namespace Envoy {
 namespace Extensions {
-namespace Filters {
-namespace Common {
-namespace Lua {
+namespace HttpFilters {
+namespace Resty {
 
 
 ScriptAction gScriptAction;
@@ -51,12 +52,36 @@ void ScriptAction::registerActionInterface()
     CLASS_DEF(ScriptAction, direct200Response);
     lua_tinker::set( _L, "_ScriptAction", this );
 
-    CLASS_ADD(Http::LowerCaseString);
-    CLASS_ADD(Http::HeaderMap);
-    CLASS_DEF(Http::HeaderMap,byteSize);
+    //CLASS_ADD(Http::LowerCaseString);
+    //CLASS_ADD(Http::HeaderMap);
+    //CLASS_DEF(Http::HeaderMap,byteSize);
+    //CLASS_DEF(Http::HeaderMap,get);
     //CLASS_DEF(Http::HeaderMap,addCopy);
+    //CLASS_DEF(Http::HeaderMap,setReferenceKey);
 
-    //CLASS_DEF
+    /*
+    CLASS_ADD(Envoy::Extensions::HttpFilters::Resty::RestyHeaderMap);
+    CLASS_DEF(Envoy::Extensions::HttpFilters::Resty::RestyHeaderMap,get);
+    CLASS_DEF(Envoy::Extensions::HttpFilters::Resty::RestyHeaderMap,add);
+    CLASS_DEF(Envoy::Extensions::HttpFilters::Resty::RestyHeaderMap,remove);
+    CLASS_DEF(Envoy::Extensions::HttpFilters::Resty::RestyHeaderMap,replace);
+    */
+
+    /*
+    _L->registerType<Filters::Common::Lua::BufferWrapper>();
+    _L->registerType<Filters::Common::Lua::MetadataMapWrapper>();
+    _L->registerType<Filters::Common::Lua::MetadataMapIterator>();
+    _L->registerType<Filters::Common::Lua::ConnectionWrapper>();
+    _L->registerType<Filters::Common::Lua::SslConnectionWrapper>();
+    _L->registerType<HeaderMapWrapper>();
+    _L->registerType<HeaderMapIterator>();
+    _L->registerType<StreamInfoWrapper>();
+    _L->registerType<DynamicMetadataMapWrapper>();
+    _L->registerType<DynamicMetadataMapIterator>();
+    //_L->registerType<StreamHandleWrapper>();
+    _L->registerType<PublicKeyWrapper>();
+    */
+
 }
 
 
@@ -196,8 +221,7 @@ bool ScriptAction::direct200Response(const char* body) {
 
 
 
-} // namespace Lua
-} // namespace Common
-} // namespace Filters
+} // namespace Resty
+} // namespace HttpFilters
 } // namespace Extensions
 } // namespace Envoy
