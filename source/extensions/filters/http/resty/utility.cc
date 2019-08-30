@@ -65,12 +65,13 @@ void Utility::validateRestySchema(const Listener& listener) {
           return h.name() == HttpFilterNames::get().Resty;
         });
     if (httpFilter == httpFilters.end()) {
-      continue;
+      break;
     }
     auto emptyRestyConfig = std::make_shared<RestyEnablePlugins>();
     Config::Utility::translateOpaqueConfig((*httpFilter).typed_config(), (*httpFilter).config(),
                                            validationVisitor, *emptyRestyConfig);
     validateRestySchema(*emptyRestyConfig);
+    break;
   }
 }
 

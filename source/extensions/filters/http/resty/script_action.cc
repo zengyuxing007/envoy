@@ -1,9 +1,9 @@
 #include "envoy/http/codes.h"
 
-#include "extensions/filters/common/lua/lua.h"
 #include "extensions/filters/common/lua/wrappers.h"
 #include "extensions/filters/http/resty/script_action.h"
 #include "extensions/filters/http/resty/wrappers.h"
+#include "extensions/filters/http/resty/resty_wrappers.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -58,20 +58,18 @@ void ScriptAction::registerActionInterface() {
   CLASS_DEF(Envoy::Extensions::HttpFilters::Resty::RestyHeaderMap,replace);
   */
 
-  /*
-  _L->registerType<Filters::Common::Lua::BufferWrapper>();
-  _L->registerType<Filters::Common::Lua::MetadataMapWrapper>();
-  _L->registerType<Filters::Common::Lua::MetadataMapIterator>();
-  _L->registerType<Filters::Common::Lua::ConnectionWrapper>();
-  _L->registerType<Filters::Common::Lua::SslConnectionWrapper>();
-  _L->registerType<HeaderMapWrapper>();
-  _L->registerType<HeaderMapIterator>();
-  _L->registerType<StreamInfoWrapper>();
-  _L->registerType<DynamicMetadataMapWrapper>();
-  _L->registerType<DynamicMetadataMapIterator>();
-  //_L->registerType<StreamHandleWrapper>();
-  _L->registerType<PublicKeyWrapper>();
-  */
+  LUA_REGISTER_TYPE(Filters::Common::Lua::BufferWrapper,_L);
+  LUA_REGISTER_TYPE(Filters::Common::Lua::MetadataMapWrapper,_L);
+  LUA_REGISTER_TYPE(Filters::Common::Lua::MetadataMapIterator,_L);
+  LUA_REGISTER_TYPE(Filters::Common::Lua::ConnectionWrapper,_L);
+  LUA_REGISTER_TYPE(Filters::Common::Lua::SslConnectionWrapper,_L);
+  LUA_REGISTER_TYPE(HeaderMapWrapper,_L);
+  LUA_REGISTER_TYPE(HeaderMapIterator,_L);
+  LUA_REGISTER_TYPE(StreamInfoWrapper,_L);
+  LUA_REGISTER_TYPE(DynamicMetadataMapWrapper,_L);
+  LUA_REGISTER_TYPE(DynamicMetadataMapIterator,_L);
+  LUA_REGISTER_TYPE(PublicKeyWrapper,_L);
+  LUA_REGISTER_TYPE(RestyHandleWrapper,_L);
 }
 
 void ScriptAction::createThreadScriptAction(int64_t threadId) {
@@ -206,6 +204,11 @@ bool ScriptAction::direct200Response(const char* body) {
       dynamic_cast<Envoy::Http::StreamDecoderFilterCallbacks*>(_stream);
   stream->sendLocalReply(Http::Code::OK, body, nullptr, absl::nullopt, "");
   return true;
+}
+
+
+Filters::Common::Lua::CoroutinePtr ScriptAction::createCoroutine() {
+    return std::make_unique<Filters::Common::Lua::Coroutine>(std::make_pair(lua_newthread(_L), _L)); 
 }
 
 } // namespace Resty

@@ -5,13 +5,27 @@
 
 #include "common/common/lock_guard.h"
 #include "common/common/thread.h"
-
+#include "extensions/filters/common/lua/lua.h"
 #include "extensions/filters/common/lua/script.h"
 
 namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
 namespace Resty {
+
+
+enum Step {
+    INIT_PLUGIN = 1,
+    DO_DECODE_HEADER = 2,
+    DO_DECODE_DATA = 3,
+    DO_DECODE_TRAILERS = 4,
+    END_DECODE,
+    DO_ENCODE_HEADER,
+    DO_ENCODE_DATA,
+    DO_ENCODE_TRAILERS,
+};
+
+
 
 struct DeletePair {
   template <typename Ty1, typename Ty2>
@@ -33,17 +47,6 @@ public:
   ScriptAction(int64_t threadId);
   ~ScriptAction();
 
-  enum Step {
-    INIT_PLUGIN = 1,
-    DO_DECODE_HEADER = 2,
-    DO_DECODE_DATA = 3,
-    DO_DECODE_TRAILERS = 4,
-    END_DECODE,
-    DO_ENCODE_HEADER,
-    DO_ENCODE_DATA,
-    DO_ENCODE_TRAILERS,
-  };
-
 public:
   bool init(const std::string&);
   void unInit();
@@ -56,6 +59,8 @@ public:
 
   bool checkPluginSchema(const std::string& name, Table& config);
   bool initPlugin(const std::string& name, Table& config);
+
+  Filters::Common::Lua::CoroutinePtr createCoroutine();
 
   bool doScriptStep(Step step, Envoy::Http::StreamFilterCallbacks* decoderCallback,
                     Envoy::Http::StreamFilterCallbacks* encoderCallback, const std::string& name,

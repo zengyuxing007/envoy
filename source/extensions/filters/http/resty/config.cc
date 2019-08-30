@@ -15,7 +15,7 @@ namespace Resty {
 Http::FilterFactoryCb RestyFilterConfig::createFilterFactoryFromProtoTyped(
     const envoy::config::filter::http::resty::v2::EnablePlugins& proto_config, const std::string&,
     Server::Configuration::FactoryContext& context) {
-  RestyPluginManagerConstSharedPtr resty_plugin_manager(new RestyPluginManager{proto_config});
+  RestyPluginManagerConstSharedPtr resty_plugin_manager(new RestyPluginManager{proto_config,context.clusterManager()});
   return [resty_plugin_manager](Http::FilterChainFactoryCallbacks& callbacks) -> void {
     callbacks.addStreamFilter(std::make_shared<Filter>(resty_plugin_manager));
   };
@@ -41,5 +41,5 @@ REGISTER_FACTORY(RestyFilterConfig, Server::Configuration::NamedHttpFilterConfig
 
 } // namespace Resty
 } // namespace HttpFilters
-} // namespace Extensions
+} // namespace Extensions 
 } // namespace Envoy

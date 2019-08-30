@@ -14,9 +14,7 @@ void Utility::protobufListValue2LuaTable(const ProtobufWkt::ListValue& listValue
 
   if (listValue.values_size() < 1)
     return;
-
   auto kind = listValue.values(0).kind_case();
-
   switch (kind) {
   case ProtobufWkt::Value::KIND_NOT_SET:
   case ProtobufWkt::Value::kNullValue:

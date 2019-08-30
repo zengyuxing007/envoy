@@ -429,6 +429,12 @@ class LuaException : public EnvoyException {
 public:
   using EnvoyException::EnvoyException;
 };
+
+
+#define LUA_REGISTER_TYPE(type,l) \
+    type::registerType(l)
+
+
 } // namespace Lua
 } // namespace Common
 } // namespace Filters

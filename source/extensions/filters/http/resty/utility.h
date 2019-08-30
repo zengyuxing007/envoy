@@ -6,6 +6,7 @@
 #include "envoy/config/filter/network/http_connection_manager/v2/http_connection_manager.pb.h"
 
 #include "common/protobuf/utility.h"
+#include "envoy/http/filter.h"
 
 #include "extensions/filters/common/lua/lua_tinker.h"
 #include "extensions/filters/http/well_known_names.h"
@@ -15,6 +16,7 @@ namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
 namespace Resty {
+
 
 class ScriptAction;
 
@@ -38,6 +40,9 @@ class RestyException : public Envoy::EnvoyException {
 public:
   RestyException(const std::string& message) : EnvoyException(message) { ; }
 };
+
+
+
 
 } // namespace Resty
 } // namespace HttpFilters

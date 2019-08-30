@@ -325,13 +325,16 @@ public:
 
   // Http::StreamDecoderFilter
   Http::FilterHeadersStatus decodeHeaders(Http::HeaderMap& headers, bool end_stream) override {
+    ENVOY_LOG(debug,"-----------decodeHeaders");
     return doHeaders(request_stream_wrapper_, request_coroutine_, decoder_callbacks_,
                      config_->requestFunctionRef(), headers, end_stream);
   }
   Http::FilterDataStatus decodeData(Buffer::Instance& data, bool end_stream) override {
+    ENVOY_LOG(debug,"----------data:{}-decodeData:{},endStream:{}",data.toString(),static_cast<void*>(&data),end_stream);
     return doData(request_stream_wrapper_, data, end_stream);
   }
   Http::FilterTrailersStatus decodeTrailers(Http::HeaderMap& trailers) override {
+    ENVOY_LOG(debug,"-----------decodeTrailers");
     return doTrailers(request_stream_wrapper_, trailers);
   }
   void setDecoderFilterCallbacks(Http::StreamDecoderFilterCallbacks& callbacks) override {
@@ -343,13 +346,16 @@ public:
     return Http::FilterHeadersStatus::Continue;
   }
   Http::FilterHeadersStatus encodeHeaders(Http::HeaderMap& headers, bool end_stream) override {
+    ENVOY_LOG(debug,"-----------encodeHeaders:{},end_stream:{}",static_cast<void*>(&headers),end_stream);
     return doHeaders(response_stream_wrapper_, response_coroutine_, encoder_callbacks_,
                      config_->responseFunctionRef(), headers, end_stream);
   }
   Http::FilterDataStatus encodeData(Buffer::Instance& data, bool end_stream) override {
+    ENVOY_LOG(debug,"-----------data:{},encodeData: {},end_stream: {}",data.toString(),static_cast<void*>(&data),end_stream);
     return doData(response_stream_wrapper_, data, end_stream);
   };
   Http::FilterTrailersStatus encodeTrailers(Http::HeaderMap& trailers) override {
+    ENVOY_LOG(debug,"-----------encodeTrailers");
     return doTrailers(response_stream_wrapper_, trailers);
   };
   Http::FilterMetadataStatus encodeMetadata(Http::MetadataMap&) override {

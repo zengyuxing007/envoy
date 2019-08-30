@@ -39,7 +39,7 @@ void Coroutine::resume(int num_args, const std::function<void()>& yield_callback
     ENVOY_LOG(debug, "coroutine finished");
   } else if (LUA_YIELD == rc) {
     state_ = State::Yielded;
-    ENVOY_LOG(debug, "coroutine yielded");
+        ENVOY_LOG(debug, "coroutine yielded");
     yield_callback();
   } else {
     state_ = State::Finished;

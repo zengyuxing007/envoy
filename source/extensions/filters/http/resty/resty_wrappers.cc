@@ -1,46 +1,59 @@
-#include "extensions/filters/http/lua/lua_filter.h"
-
-#include <memory>
-
-#include "envoy/http/codes.h"
-
-#include "common/buffer/buffer_impl.h"
-#include "common/common/assert.h"
-#include "common/common/enum_to_int.h"
-#include "common/crypto/utility.h"
+#include "extensions/filters/http/resty/resty_wrappers.h"
+#include "extensions/filters/http/resty/resty_filter.h"
+#include "common/http/header_map_impl.h"
 #include "common/http/message_impl.h"
+#include "common/common/enum_to_int.h"
 
 namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
-namespace Lua {
+namespace Resty {
 
-StreamHandleWrapper::StreamHandleWrapper(Filters::Common::Lua::Coroutine& coroutine,
-                                         Http::HeaderMap& headers, bool end_stream, Filter& filter,
+
+
+DecoderCallbacks::DecoderCallbacks(Filter* parent):parent_(parent)
+{}
+
+DecoderCallbacks::~DecoderCallbacks() {}
+
+
+EncoderCallbacks::EncoderCallbacks(Filter* parent):parent_(parent)
+{}
+
+
+EncoderCallbacks::~EncoderCallbacks() {}
+
+
+void DecoderCallbacks::respond(Http::HeaderMapPtr&& headers, Buffer::Instance* body,
+                                       lua_State*) {
+  callbacks_->encodeHeaders(std::move(headers), body == nullptr);
+  if (body && !parent_->destroyed()) {
+    callbacks_->encodeData(*body, true);
+  }
+}
+
+void EncoderCallbacks::respond(Http::HeaderMapPtr&&, Buffer::Instance*, lua_State* state) {
+  // TODO(mattklein123): Support response in response path if nothing has been continued
+  // yet.
+  luaL_error(state, "respond not currently supported in the response path");
+}
+
+
+
+
+///////
+
+RestyHandleWrapper::RestyHandleWrapper(Filters::Common::Lua::Coroutine& coroutine,
+                                         Http::HeaderMap& headers, bool end_stream, RestyPluginManager* filter,
                                          FilterCallbacks& callbacks)
-    : coroutine_(coroutine), headers_(headers), end_stream_(end_stream), filter_(filter),
+    : coroutine_(coroutine), headers_(headers), end_stream_(end_stream), plugin_manager_(filter),
       callbacks_(callbacks), yield_callback_([this]() {
         if (state_ == State::Running) {
           throw Filters::Common::Lua::LuaException("script performed an unexpected yield");
         }
       }) {}
 
-Http::FilterHeadersStatus StreamHandleWrapper::start(int function_ref) {
-  // We are on the top of the stack.
-  coroutine_.start(function_ref, 1, yield_callback_);
-  Http::FilterHeadersStatus status =
-      (state_ == State::WaitForBody || state_ == State::HttpCall || state_ == State::Responded)
-          ? Http::FilterHeadersStatus::StopIteration
-          : Http::FilterHeadersStatus::Continue;
-
-  if (status == Http::FilterHeadersStatus::Continue) {
-    headers_continued_ = true;
-  }
-
-  return status;
-}
-
-Http::FilterDataStatus StreamHandleWrapper::onData(Buffer::Instance& data, bool end_stream) {
+Http::FilterDataStatus RestyHandleWrapper::onData(Buffer::Instance& data, bool end_stream) {
   ASSERT(!end_stream_);
   end_stream_ = end_stream;
   saw_body_ = true;
@@ -73,7 +86,7 @@ Http::FilterDataStatus StreamHandleWrapper::onData(Buffer::Instance& data, bool 
   }
 }
 
-Http::FilterTrailersStatus StreamHandleWrapper::onTrailers(Http::HeaderMap& trailers) {
+Http::FilterTrailersStatus RestyHandleWrapper::onTrailers(Http::HeaderMap& trailers) {
   ASSERT(!end_stream_);
   end_stream_ = true;
   trailers_ = &trailers;
@@ -105,7 +118,7 @@ Http::FilterTrailersStatus StreamHandleWrapper::onTrailers(Http::HeaderMap& trai
   return status;
 }
 
-int StreamHandleWrapper::luaRespond(lua_State* state) {
+int RestyHandleWrapper::luaRespond(lua_State* state) {
   ASSERT(state_ == State::Running);
 
   if (headers_continued_) {
@@ -137,7 +150,7 @@ int StreamHandleWrapper::luaRespond(lua_State* state) {
   return lua_yield(state, 0);
 }
 
-Http::HeaderMapPtr StreamHandleWrapper::buildHeadersFromTable(lua_State* state, int table_index) {
+Http::HeaderMapPtr RestyHandleWrapper::buildHeadersFromTable(lua_State* state, int table_index) {
   Http::HeaderMapPtr headers(new Http::HeaderMapImpl());
 
   // Build a header map to make the request. We iterate through the provided table to do this and
@@ -157,7 +170,7 @@ Http::HeaderMapPtr StreamHandleWrapper::buildHeadersFromTable(lua_State* state, 
   return headers;
 }
 
-int StreamHandleWrapper::luaHttpCall(lua_State* state) {
+int RestyHandleWrapper::luaHttpCall(lua_State* state) {
   ASSERT(state_ == State::Running);
 
   const std::string cluster = luaL_checkstring(state, 2);
@@ -169,7 +182,7 @@ int StreamHandleWrapper::luaHttpCall(lua_State* state) {
     return luaL_error(state, "http call timeout must be >= 0");
   }
 
-  if (filter_.clusterManager().get(cluster) == nullptr) {
+  if (plugin_manager_->clusterManager().get(cluster) == nullptr) {
     return luaL_error(state, "http call cluster invalid. Must be configured");
   }
 
@@ -191,7 +204,7 @@ int StreamHandleWrapper::luaHttpCall(lua_State* state) {
     timeout = std::chrono::milliseconds(timeout_ms);
   }
 
-  http_request_ = filter_.clusterManager().httpAsyncClientForCluster(cluster).send(
+  http_request_ = plugin_manager_->clusterManager().httpAsyncClientForCluster(cluster).send(
       std::move(message), *this, Http::AsyncClient::RequestOptions().setTimeout(timeout));
   if (http_request_) {
     state_ = State::HttpCall;
@@ -203,7 +216,7 @@ int StreamHandleWrapper::luaHttpCall(lua_State* state) {
   }
 }
 
-void StreamHandleWrapper::onSuccess(Http::MessagePtr&& response) {
+void RestyHandleWrapper::onSuccess(Http::MessagePtr&& response) {
   ASSERT(state_ == State::HttpCall || state_ == State::Running);
   ENVOY_LOG(debug, "async HTTP response complete");
   http_request_ = nullptr;
@@ -239,7 +252,7 @@ void StreamHandleWrapper::onSuccess(Http::MessagePtr&& response) {
       coroutine_.resume(2, yield_callback_);
       markDead();
     } catch (const Filters::Common::Lua::LuaException& e) {
-      filter_.scriptError(e);
+      plugin_manager_->scriptError(e);
     }
 
     if (state_ == State::Running) {
@@ -249,7 +262,7 @@ void StreamHandleWrapper::onSuccess(Http::MessagePtr&& response) {
   }
 }
 
-void StreamHandleWrapper::onFailure(Http::AsyncClient::FailureReason) {
+void RestyHandleWrapper::onFailure(Http::AsyncClient::FailureReason) {
   ASSERT(state_ == State::HttpCall || state_ == State::Running);
   ENVOY_LOG(debug, "async HTTP failure");
 
@@ -261,7 +274,7 @@ void StreamHandleWrapper::onFailure(Http::AsyncClient::FailureReason) {
   onSuccess(std::move(response_message));
 }
 
-int StreamHandleWrapper::luaHeaders(lua_State* state) {
+int RestyHandleWrapper::luaHeaders(lua_State* state) {
   ASSERT(state_ == State::Running);
 
   if (headers_wrapper_.get() != nullptr) {
@@ -287,7 +300,7 @@ int StreamHandleWrapper::luaHeaders(lua_State* state) {
   return 1;
 }
 
-int StreamHandleWrapper::luaBody(lua_State* state) {
+int RestyHandleWrapper::luaBody(lua_State* state) {
   ASSERT(state_ == State::Running);
 
   if (end_stream_) {
@@ -315,7 +328,7 @@ int StreamHandleWrapper::luaBody(lua_State* state) {
   }
 }
 
-int StreamHandleWrapper::luaBodyChunks(lua_State* state) {
+int RestyHandleWrapper::luaBodyChunks(lua_State* state) {
   ASSERT(state_ == State::Running);
 
   if (saw_body_) {
@@ -327,7 +340,7 @@ int StreamHandleWrapper::luaBodyChunks(lua_State* state) {
   return 1;
 }
 
-int StreamHandleWrapper::luaBodyIterator(lua_State* state) {
+int RestyHandleWrapper::luaBodyIterator(lua_State* state) {
   ASSERT(state_ == State::Running);
 
   if (end_stream_) {
@@ -340,7 +353,7 @@ int StreamHandleWrapper::luaBodyIterator(lua_State* state) {
   }
 }
 
-int StreamHandleWrapper::luaTrailers(lua_State* state) {
+int RestyHandleWrapper::luaTrailers(lua_State* state) {
   ASSERT(state_ == State::Running);
 
   if (end_stream_ && trailers_ == nullptr) {
@@ -361,7 +374,7 @@ int StreamHandleWrapper::luaTrailers(lua_State* state) {
   }
 }
 
-int StreamHandleWrapper::luaMetadata(lua_State* state) {
+int RestyHandleWrapper::luaMetadata(lua_State* state) {
   ASSERT(state_ == State::Running);
   if (metadata_wrapper_.get() != nullptr) {
     metadata_wrapper_.pushStack();
@@ -372,7 +385,7 @@ int StreamHandleWrapper::luaMetadata(lua_State* state) {
   return 1;
 }
 
-int StreamHandleWrapper::luaStreamInfo(lua_State* state) {
+int RestyHandleWrapper::luaStreamInfo(lua_State* state) {
   ASSERT(state_ == State::Running);
   if (stream_info_wrapper_.get() != nullptr) {
     stream_info_wrapper_.pushStack();
@@ -382,7 +395,7 @@ int StreamHandleWrapper::luaStreamInfo(lua_State* state) {
   return 1;
 }
 
-int StreamHandleWrapper::luaConnection(lua_State* state) {
+int RestyHandleWrapper::luaConnection(lua_State* state) {
   ASSERT(state_ == State::Running);
   if (connection_wrapper_.get() != nullptr) {
     connection_wrapper_.pushStack();
@@ -393,43 +406,7 @@ int StreamHandleWrapper::luaConnection(lua_State* state) {
   return 1;
 }
 
-int StreamHandleWrapper::luaLogTrace(lua_State* state) {
-  const char* message = luaL_checkstring(state, 2);
-  filter_.scriptLog(spdlog::level::trace, message);
-  return 0;
-}
-
-int StreamHandleWrapper::luaLogDebug(lua_State* state) {
-  const char* message = luaL_checkstring(state, 2);
-  filter_.scriptLog(spdlog::level::debug, message);
-  return 0;
-}
-
-int StreamHandleWrapper::luaLogInfo(lua_State* state) {
-  const char* message = luaL_checkstring(state, 2);
-  filter_.scriptLog(spdlog::level::info, message);
-  return 0;
-}
-
-int StreamHandleWrapper::luaLogWarn(lua_State* state) {
-  const char* message = luaL_checkstring(state, 2);
-  filter_.scriptLog(spdlog::level::warn, message);
-  return 0;
-}
-
-int StreamHandleWrapper::luaLogErr(lua_State* state) {
-  const char* message = luaL_checkstring(state, 2);
-  filter_.scriptLog(spdlog::level::err, message);
-  return 0;
-}
-
-int StreamHandleWrapper::luaLogCritical(lua_State* state) {
-  const char* message = luaL_checkstring(state, 2);
-  filter_.scriptLog(spdlog::level::critical, message);
-  return 0;
-}
-
-int StreamHandleWrapper::luaVerifySignature(lua_State* state) {
+int RestyHandleWrapper::luaVerifySignature(lua_State* state) {
   // Step 1: get hash function
   absl::string_view hash = luaL_checkstring(state, 2);
 
@@ -459,7 +436,7 @@ int StreamHandleWrapper::luaVerifySignature(lua_State* state) {
   return 2;
 }
 
-int StreamHandleWrapper::luaImportPublicKey(lua_State* state) {
+int RestyHandleWrapper::luaImportPublicKey(lua_State* state) {
   // Get byte array and the length.
   const char* str = luaL_checkstring(state, 2);
   int n = luaL_checknumber(state, 3);
@@ -475,151 +452,10 @@ int StreamHandleWrapper::luaImportPublicKey(lua_State* state) {
   return 1;
 }
 
-FilterConfig::FilterConfig(const std::string& lua_code, ThreadLocal::SlotAllocator& tls,
-                           Upstream::ClusterManager& cluster_manager)
-    : cluster_manager_(cluster_manager), lua_state_(lua_code, tls) {
-  lua_state_.registerType<Filters::Common::Lua::BufferWrapper>();
-  lua_state_.registerType<Filters::Common::Lua::MetadataMapWrapper>();
-  lua_state_.registerType<Filters::Common::Lua::MetadataMapIterator>();
-  lua_state_.registerType<Filters::Common::Lua::ConnectionWrapper>();
-  lua_state_.registerType<Filters::Common::Lua::SslConnectionWrapper>();
-  lua_state_.registerType<HeaderMapWrapper>();
-  lua_state_.registerType<HeaderMapIterator>();
-  lua_state_.registerType<StreamInfoWrapper>();
-  lua_state_.registerType<DynamicMetadataMapWrapper>();
-  lua_state_.registerType<DynamicMetadataMapIterator>();
-  lua_state_.registerType<StreamHandleWrapper>();
-  lua_state_.registerType<PublicKeyWrapper>();
 
-  request_function_slot_ = lua_state_.registerGlobal("envoy_on_request");
-  if (lua_state_.getGlobalRef(request_function_slot_) == LUA_REFNIL) {
-    ENVOY_LOG(info, "envoy_on_request() function not found. Lua filter will not hook requests.");
-  }
 
-  response_function_slot_ = lua_state_.registerGlobal("envoy_on_response");
-  if (lua_state_.getGlobalRef(response_function_slot_) == LUA_REFNIL) {
-    ENVOY_LOG(info, "envoy_on_response() function not found. Lua filter will not hook responses.");
-  }
-}
 
-void Filter::onDestroy() {
-  destroyed_ = true;
-  if (request_stream_wrapper_.get()) {
-    request_stream_wrapper_.get()->onReset();
-  }
-  if (response_stream_wrapper_.get()) {
-    response_stream_wrapper_.get()->onReset();
-  }
-}
-
-Http::FilterHeadersStatus Filter::doHeaders(StreamHandleRef& handle,
-                                            Filters::Common::Lua::CoroutinePtr& coroutine,
-                                            FilterCallbacks& callbacks, int function_ref,
-                                            Http::HeaderMap& headers, bool end_stream) {
-
-  auto tid = std::this_thread::get_id();
-  ENVOY_LOG(debug,"zyx -- luafilter doHeader: handle:{},tid:{}",static_cast<void*>(&handle),tid);
-
-  if (function_ref == LUA_REFNIL) {
-    return Http::FilterHeadersStatus::Continue;
-  }
-
-  coroutine = config_->createCoroutine();
-  handle.reset(StreamHandleWrapper::create(coroutine->luaState(), *coroutine, headers, end_stream,
-                                           *this, callbacks),
-               true);
-
-  Http::FilterHeadersStatus status = Http::FilterHeadersStatus::Continue;
-  try {
-    status = handle.get()->start(function_ref);
-    handle.markDead();
-  } catch (const Filters::Common::Lua::LuaException& e) {
-    scriptError(e);
-  }
-
-  return status;
-}
-
-Http::FilterDataStatus Filter::doData(StreamHandleRef& handle, Buffer::Instance& data,
-                                      bool end_stream) {
-
-  auto tid = std::this_thread::get_id();
-  ENVOY_LOG(debug,"zyx -- luafilter doData----: handle:{},tid:{}",static_cast<void*>(&handle),tid);
-  Http::FilterDataStatus status = Http::FilterDataStatus::Continue;
-  if (handle.get() != nullptr) {
-    try {
-      handle.markLive();
-      status = handle.get()->onData(data, end_stream);
-      handle.markDead();
-    } catch (const Filters::Common::Lua::LuaException& e) {
-      scriptError(e);
-    }
-  }
-
-  return status;
-}
-
-Http::FilterTrailersStatus Filter::doTrailers(StreamHandleRef& handle, Http::HeaderMap& trailers) {
-  Http::FilterTrailersStatus status = Http::FilterTrailersStatus::Continue;
-  if (handle.get() != nullptr) {
-    try {
-      handle.markLive();
-      status = handle.get()->onTrailers(trailers);
-      handle.markDead();
-    } catch (const Filters::Common::Lua::LuaException& e) {
-      scriptError(e);
-    }
-  }
-
-  return status;
-}
-
-void Filter::scriptError(const Filters::Common::Lua::LuaException& e) {
-  scriptLog(spdlog::level::err, e.what());
-  request_stream_wrapper_.reset();
-  response_stream_wrapper_.reset();
-}
-
-void Filter::scriptLog(spdlog::level::level_enum level, const char* message) {
-  switch (level) {
-  case spdlog::level::trace:
-    ENVOY_LOG(trace, "script log: {}", message);
-    return;
-  case spdlog::level::debug:
-    ENVOY_LOG(debug, "script log: {}", message);
-    return;
-  case spdlog::level::info:
-    ENVOY_LOG(info, "script log: {}", message);
-    return;
-  case spdlog::level::warn:
-    ENVOY_LOG(warn, "script log: {}", message);
-    return;
-  case spdlog::level::err:
-    ENVOY_LOG(error, "script log: {}", message);
-    return;
-  case spdlog::level::critical:
-    ENVOY_LOG(critical, "script log: {}", message);
-    return;
-  case spdlog::level::off:
-    NOT_IMPLEMENTED_GCOVR_EXCL_LINE;
-  }
-}
-
-void Filter::DecoderCallbacks::respond(Http::HeaderMapPtr&& headers, Buffer::Instance* body,
-                                       lua_State*) {
-  callbacks_->encodeHeaders(std::move(headers), body == nullptr);
-  if (body && !parent_.destroyed_) {
-    callbacks_->encodeData(*body, true);
-  }
-}
-
-void Filter::EncoderCallbacks::respond(Http::HeaderMapPtr&&, Buffer::Instance*, lua_State* state) {
-  // TODO(mattklein123): Support response in response path if nothing has been continued
-  // yet.
-  luaL_error(state, "respond not currently supported in the response path");
-}
-
-} // namespace Lua
+} // namespace Resty
 } // namespace HttpFilters
 } // namespace Extensions
 } // namespace Envoy

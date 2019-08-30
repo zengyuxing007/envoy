@@ -20,6 +20,7 @@ envoy_cc_library(
         "script_action.cc",
         "utility.cc",
         "wrappers.cc",
+        "resty_wrappers.cc",
     ],
     hdrs = [
         "plugin.h",
@@ -29,6 +30,7 @@ envoy_cc_library(
         "script_action.inl",
         "utility.h",
         "wrappers.h",
+        "resty_wrappers.h",
     ],
     deps = [
         "//include/envoy/http:codes_interface",
@@ -45,6 +47,8 @@ envoy_cc_library(
         "//source/extensions/filters/common/lua:wrappers_lib",
         "//source/extensions/filters/http:well_known_names",
         "//source/extensions/filters/network:well_known_names",
+        "//include/envoy/stream_info:stream_info_interface",
+        "//include/envoy/http:header_map_interface",
         "@envoy_api//envoy/api/v2:lds_cc",
         "@envoy_api//envoy/api/v2/listener:listener_cc",
         "@envoy_api//envoy/config/filter/http/resty/v2:resty_cc",

@@ -3,6 +3,7 @@
 #include <google/protobuf/struct.pb.h>
 
 #include "common/common/enum_to_int.h"
+#include "envoy/upstream/cluster_manager.h"
 
 #include "extensions/filters/common/lua/lua.h"
 #include "extensions/filters/common/lua/utility.h"
@@ -12,8 +13,9 @@ namespace Extensions {
 namespace HttpFilters {
 namespace Resty {
 
-RestyPluginManager::RestyPluginManager(const RestyEnablePlugins& enablePluginList)
-    : enable_plugin_list_(enablePluginList) {}
+RestyPluginManager::RestyPluginManager(const RestyEnablePlugins& enablePluginList,Upstream::ClusterManager& cluster_manager)
+    : cluster_manager_(cluster_manager),enable_plugin_list_(enablePluginList)
+{}
 
 RestyPluginManager::~RestyPluginManager() {}
 
@@ -73,7 +75,7 @@ bool RestyPluginManager::initAllPlugin() {
   return true;
 }
 
-bool RestyPluginManager::doStep(ScriptAction::Step step, uint32_t& returnStatus) {
+bool RestyPluginManager::doStep(StreamHandleRef& handle,Step step, uint32_t& returnStatus) {
   auto tid = std::this_thread::get_id();
   ScriptAction* sa = gScriptAction.getThreadScriptAction(tid);
 
@@ -82,14 +84,14 @@ bool RestyPluginManager::doStep(ScriptAction::Step step, uint32_t& returnStatus)
     return false;
   }
 
+
   int size = enable_plugin_list_.plugins_size();
   int i(0);
   for (; i < size; ++i) {
     auto p = enable_plugin_list_.plugins(i);
     auto p_config_table = pluginConfigToTable(sa, p);
     uint32_t intStatus(0);
-    if (!sa->doScriptStep(step, decoder_callbacks_, encoder_callbacks_, p.name(), *p_config_table,
-                          intStatus)) {
+    if (!sa->doScriptStep(step, decoder_callbacks_, encoder_callbacks_, p.name(), *p_config_table,intStatus)) {
       ENVOY_LOG(error, "doScriptStep excute error");
       return false;
     }
@@ -178,11 +180,9 @@ bool RestyPluginManager::isStopIteration(uint32_t status) {
 ///////////////////////////////////////////////////////////////////
 //////////////// decode
 
-Http::FilterHeadersStatus RestyPluginManager::doDecodeHeaders(Http::HeaderMap& headers,
+Http::FilterHeadersStatus RestyPluginManager::doDecodeHeaders(StreamHandleRef& handle,Http::HeaderMap& headers,
                                                               bool end_stream) {
-
-  auto route = decoder_callbacks_->route();
-
+  auto route = decoder_callbacks_.callbacks_->route();
   if (!route) {
     ENVOY_LOG(debug, "not any route found");
     return Http::FilterHeadersStatus::Continue;
@@ -198,7 +198,18 @@ Http::FilterHeadersStatus RestyPluginManager::doDecodeHeaders(Http::HeaderMap& h
   uint32_t intStatus(0);
   ENVOY_LOG(info, "RestyPluginManager -- doDecodeHeaders");
 
-  if (!doStep(ScriptAction::Step::DO_DECODE_HEADER, intStatus)) {
+  auto tid = std::this_thread::get_id();
+  ScriptAction* sa = gScriptAction.getThreadScriptAction(tid);
+
+  if (sa == NULL) {
+    ENVOY_LOG(error, "doDecodeHeaders  error: not found ScriptAction by threadId-{}", tid);
+    return Http::FilterHeadersStatus::Continue;
+  }
+
+  Filters::Common::Lua::CoroutinePtr coroutine = sa->createCoroutine();
+  handle.reset(RestyHandleWrapper::create(coroutine->luaState(), *coroutine, headers, end_stream,this, decoder_callbacks_), false);
+
+  if (!doStep(handle,Step::DO_DECODE_HEADER, intStatus)) {
     ENVOY_LOG(error, "doStep --- DO_DECODE_HEADER -- error: {}",
               "excute script error,please see more in log");
     return Http::FilterHeadersStatus::StopIteration;
@@ -209,48 +220,48 @@ Http::FilterHeadersStatus RestyPluginManager::doDecodeHeaders(Http::HeaderMap& h
   return intToHeaderStatus(intStatus);
 }
 
-Http::FilterDataStatus RestyPluginManager::doDecodeData(Buffer::Instance& data, bool end_stream) {
+Http::FilterDataStatus RestyPluginManager::doDecodeData(StreamHandleRef& handle,Buffer::Instance& data, bool end_stream) {
   uint32_t intStatus(0);
   ENVOY_LOG(info, "RestyPluginManager -- doDecodeData");
-  if (!doStep(ScriptAction::Step::DO_DECODE_DATA, intStatus)) {
+  if (!doStep(handle,Step::DO_DECODE_DATA, intStatus)) {
     return Http::FilterDataStatus::StopIterationNoBuffer;
   }
   return intToDataStatus(intStatus);
 }
 
-Http::FilterTrailersStatus RestyPluginManager::doDecodeTrailers(Http::HeaderMap& trailers) {
+Http::FilterTrailersStatus RestyPluginManager::doDecodeTrailers(StreamHandleRef& handle,Http::HeaderMap& trailers) {
   uint32_t intStatus(0);
   ENVOY_LOG(info, "RestyPluginManager -- doDecodeTrailers");
-  if (!doStep(ScriptAction::Step::DO_DECODE_TRAILERS, intStatus)) {
+  if (!doStep(handle,Step::DO_DECODE_TRAILERS, intStatus)) {
     return Http::FilterTrailersStatus::StopIteration;
   }
   return intToTrailerStatus(intStatus);
 }
 
 /////////////////encode
-Http::FilterHeadersStatus RestyPluginManager::doEncodeHeaders(Http::HeaderMap& headers,
+Http::FilterHeadersStatus RestyPluginManager::doEncodeHeaders(StreamHandleRef& handle,Http::HeaderMap& headers,
                                                               bool end_stream) {
   uint32_t intStatus(0);
   ENVOY_LOG(info, "RestyPluginManager -- doEncodeHeaders");
-  if (!doStep(ScriptAction::Step::DO_ENCODE_HEADER, intStatus)) {
+  if (!doStep(handle,Step::DO_ENCODE_HEADER, intStatus)) {
     return Http::FilterHeadersStatus::StopIteration;
   }
   return intToHeaderStatus(intStatus);
 }
 
-Http::FilterDataStatus RestyPluginManager::doEncodeData(Buffer::Instance& data, bool end_stream) {
+Http::FilterDataStatus RestyPluginManager::doEncodeData(StreamHandleRef& handle,Buffer::Instance& data, bool end_stream) {
   uint32_t intStatus(0);
   ENVOY_LOG(info, "RestyPluginManager -- doEncodeData");
-  if (!doStep(ScriptAction::Step::DO_ENCODE_DATA, intStatus)) {
+  if (!doStep(handle,Step::DO_ENCODE_DATA, intStatus)) {
     return Http::FilterDataStatus::StopIterationNoBuffer;
   }
   return intToDataStatus(intStatus);
 }
 
-Http::FilterTrailersStatus RestyPluginManager::doEncodeTrailers(Http::HeaderMap& trailers) {
+Http::FilterTrailersStatus RestyPluginManager::doEncodeTrailers(StreamHandleRef& handle,Http::HeaderMap& trailers) {
   uint32_t intStatus(0);
   ENVOY_LOG(info, "RestyPluginManager -- doEncodeTrailers");
-  if (!doStep(ScriptAction::Step::DO_ENCODE_TRAILERS, intStatus)) {
+  if (!doStep(handle,Step::DO_ENCODE_TRAILERS, intStatus)) {
     return Http::FilterTrailersStatus::StopIteration;
   }
   return intToTrailerStatus(intStatus);
