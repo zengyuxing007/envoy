@@ -10,6 +10,7 @@
 #include "common/common/assert.h"
 #include "common/common/c_smart_ptr.h"
 #include "common/common/logger.h"
+#include "extensions/filters/common/lua/lua_tinker.h"
 
 #include "luajit-2.1/lua.hpp"
 
@@ -51,10 +52,26 @@ namespace Lua {
   }                                                                                                \
   int Name(lua_State* state);
 
+#define DECLARE_LUA_FUNCTION_EX_USING_DEFINED_NAME(Class, Name, Index)                             \
+  static int static_##Name(lua_State* state) {                                                     \
+    Class* object = ::Envoy::Extensions::Filters::Common::Lua::alignAndCast<Class>(                \
+        lua_touserdata(state,Index)); \
+    return object->Name(state);                                                                    \
+  }                                                                                                \
+  int Name(lua_State* state);
+
+
+
 /**
  * Declare a Lua function in which userdata is in stack slot 1. See DECLARE_LUA_FUNCTION_EX()
  */
 #define DECLARE_LUA_FUNCTION(Class, Name) DECLARE_LUA_FUNCTION_EX(Class, Name, 1)
+
+//TODO
+#define DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(Class, Name) DECLARE_LUA_FUNCTION_EX_USING_DEFINED_NAME(Class, Name, 1)
+
+#define DECLARE_SIMPLE_FUNCTION(Class,Name) \
+  int Name(lua_State* state);
 
 /**
  * Declare a Lua function in which userdata is in upvalue slot 1. See DECLARE_LUA_FUNCTION_EX()
@@ -80,12 +97,29 @@ template <typename T> inline T* alignAndCast(void* mem) {
  */
 template <typename T> inline T* allocateLuaUserData(lua_State* state) {
   void* mem = lua_newuserdata(state, maximumSpaceNeededToAlign<T>());
+  //ENVOY_LOG(debug,"allocateLuaUserData --using xxx name{}",typeid(T).name());
   luaL_getmetatable(state, typeid(T).name());
   ASSERT(lua_istable(state, -1));
   lua_setmetatable(state, -2);
 
   return alignAndCast<T>(mem);
 }
+
+
+/**
+ * Create a new user data and assign its metatable. -- using specified class name
+ */
+template <typename T> inline T* allocateLuaUserData(const char* name,lua_State* state) {
+  //ENVOY_LOG(debug,"allocateLuaUserData --using name{}",name);
+  void* mem = lua_newuserdata(state, maximumSpaceNeededToAlign<T>());
+  luaL_getmetatable(state, name);
+  ASSERT(lua_istable(state, -1));
+  lua_setmetatable(state, -2);
+
+  return alignAndCast<T>(mem);
+}
+
+
 
 /**
  * This is the base class for all C++ objects that we expose out to Lua. The goal is to hide as
@@ -119,9 +153,23 @@ public:
   static std::pair<T*, lua_State*> create(lua_State* state, ConstructorArgs&&... args) {
     // Memory is allocated via Lua and it is raw. We use placement new to run the constructor.
     T* mem = allocateLuaUserData<T>(state);
-    ENVOY_LOG(trace, "creating {} at {}", typeid(T).name(), static_cast<void*>(mem));
+    ENVOY_LOG(debug, "creating {} at {}", typeid(T).name(), static_cast<void*>(mem));
     return {new (mem) T(std::forward<ConstructorArgs>(args)...), state};
   }
+
+
+
+  //create using specified class name
+  template <typename... ConstructorArgs>
+  static std::pair<T*, lua_State*> createUsingSpecifiedName(const char* name,lua_State* state, ConstructorArgs&&... args) {
+    // Memory is allocated via Lua and it is raw. We use placement new to run the constructor.
+    //T* mem = allocateLuaUserData<T>(name,state);
+    //ENVOY_LOG(debug, "createUsingSpecifiedName {} at {}", name, static_cast<void*>(mem));
+    //return {new (mem) T(std::forward<ConstructorArgs>(args)...), state};
+    //TODO
+    return {new T(std::forward<ConstructorArgs>(args)...), state};
+  }
+
 
   /**
    * Register a type with Lua.
@@ -134,6 +182,7 @@ public:
     // metatable.
     ExportedFunctions functions = T::exportedFunctions();
     for (auto function : functions) {
+      ENVOY_LOG(debug,"wrapper {} : register function {}",typeid(T).name(),function.first);
       to_register.push_back({function.first, function.second});
     }
 
@@ -158,8 +207,108 @@ public:
 
     lua_pushvalue(state, -1);
     lua_setfield(state, -2, "__index");
+
     luaL_register(state, nullptr, to_register.data());
   }
+
+
+  static void registerMyType(lua_State* L, const char* name) {
+      ENVOY_LOG(debug,"registerMyType: {}",name);
+
+      lua_tinker::class_name<T>::name(name);
+      lua_pushstring(L, name);
+      lua_newtable(L);
+
+      lua_pushstring(L, "__name");
+      lua_pushstring(L, name);
+      lua_rawset(L, -3);
+
+      lua_pushstring(L, "__index");
+      lua_pushcclosure(L, lua_tinker::meta_get, 0);
+      lua_rawset(L, -3);
+
+      lua_pushstring(L, "__newindex");
+      lua_pushcclosure(L, lua_tinker::meta_set, 0);
+      lua_rawset(L, -3);
+
+      lua_pushstring(L, "__gc");
+      lua_pushcclosure(L, lua_tinker::destroyer<T>, 0);
+      lua_rawset(L, -3);
+
+      lua_settable(L, LUA_GLOBALSINDEX);
+
+  }
+
+
+   /**
+   * Register a type with Lua  and using specificed class name
+   * @param state supplies the state to register with.
+   */
+  static void registerType(lua_State* state,const char* name) {
+    std::vector<luaL_Reg> to_register;
+
+    // Fetch all of the functions to be exported to Lua so that we can register them in the
+    // metatable.
+    ExportedFunctions functions = T::exportedFunctions();
+    for (auto function : functions) {
+      ENVOY_LOG(debug,"wrapper {} : register function {}",name,function.first);
+      to_register.push_back({function.first, function.second});
+    }
+
+    /*
+    // Always register a __gc method so that we can run the object's destructor. We do this
+    // manually because the memory is raw and was allocated by Lua.
+    to_register.push_back(
+        {"__gc", [&](lua_State* state) {
+           T* object = alignAndCast<T>(luaL_checkudata(state, 1, name));
+           ENVOY_LOG(trace, "destroying {} at {}", name, static_cast<void*>(object));
+           object->~T();
+           return 0;
+         }});
+         */
+
+    // Add the sentinel.
+    to_register.push_back({nullptr, nullptr});
+
+    // Register the type by creating a new metatable, setting __index to itself, and then
+    lua_tinker::class_name<T>::name(name);
+    // performing the register.
+    ENVOY_LOG(debug, "registering new type: {}", name);
+    
+    lua_pushstring(state, name);
+    lua_newtable(state);
+
+    lua_pushstring(state, "__name");
+    lua_pushstring(state, name);
+    lua_rawset(state, -3);
+
+    lua_pushstring(state, "__index");
+    lua_pushcclosure(state, lua_tinker::meta_get, 0);
+    lua_rawset(state, -3);
+
+    lua_pushstring(state, "__newindex");
+    lua_pushcclosure(state, lua_tinker::meta_set, 0);
+    lua_rawset(state, -3);
+
+    lua_pushstring(state, "__gc");
+    lua_pushcclosure(state, lua_tinker::destroyer<T>, 0);
+    lua_rawset(state, -3);
+
+    lua_settable(state, LUA_GLOBALSINDEX);
+
+    ////
+    //TODO
+    int rc = luaL_newmetatable(state, name);
+    ASSERT(rc == 1);
+
+    ENVOY_LOG(debug, "---add useradata type: {}", name);
+    lua_pushvalue(state, -1);
+    lua_setfield(state, -2, "__index");
+
+
+    luaL_register(state, name, to_register.data());
+  }
+
 
   /**
    * This function is called as part of the DECLARE_LUA_FUNCTION* macros. The idea here is that
@@ -218,12 +367,15 @@ private:
  * functionality. While a LuaRef owns an object it's guaranteed that Lua will not GC it.
  * TODO(mattklein123): Add dedicated unit tests. This will require mocking a Lua state.
  */
-template <typename T> class LuaRef {
+template <typename T> class LuaRef: public Logger::Loggable<Logger::Id::lua>  {
 public:
   /**
    * Create an empty LuaRef.
    */
-  LuaRef() { reset(); }
+  LuaRef() { 
+      ENVOY_LOG(debug,"luaRef --- Constructor------------");
+      reset(); 
+  }
 
   /**
    * Create a LuaRef from an object.
@@ -258,8 +410,11 @@ public:
    * Return a LuaRef to its default/empty state.
    */
   void reset() {
+    ENVOY_LOG(debug,"luaRef::reset be invoked");
     unref();
     object_ = std::pair<T*, lua_State*>{};
+    object_.first = NULL;
+    object_.second = NULL;
     ref_ = LUA_NOREF;
   }
 
@@ -287,7 +442,7 @@ protected:
  * useful if an object should not be used after the scope of the pcall() or resume().
  * TODO(mattklein123): Add dedicated unit tests. This will require mocking a Lua state.
  */
-template <typename T> class LuaDeathRef : public LuaRef<T> {
+template <typename T> class LuaDeathRef : public LuaRef<T>{
 public:
   using LuaRef<T>::LuaRef;
 
@@ -306,11 +461,13 @@ public:
   }
 
   void reset(const std::pair<T*, lua_State*>& object, bool leave_on_stack) {
-    markDead();
+    printf("%s\n","LuaDeathRef reset --111-");
+    //markDead();
     LuaRef<T>::reset(object, leave_on_stack);
   }
 
   void reset() {
+    printf("%s\n","LuaDeathRef --- reset---- markDead first");
     markDead();
     LuaRef<T>::reset();
   }
@@ -432,7 +589,7 @@ public:
 
 
 #define LUA_REGISTER_TYPE(type,l) \
-    type::registerType(l)
+    type::registerType(l,#type)
 
 
 } // namespace Lua

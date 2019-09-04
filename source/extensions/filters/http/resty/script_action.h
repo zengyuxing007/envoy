@@ -41,6 +41,8 @@ struct DeletePair {
 
 using Script = ::Envoy::Extensions::Filters::Common::Lua::Script;
 
+class RestyHandleWrapper;
+
 class ScriptAction : public Script {
 public:
   ScriptAction();
@@ -50,6 +52,11 @@ public:
 public:
   bool init(const std::string&);
   void unInit();
+
+  RestyHandleWrapper* getHandle();
+
+
+
 
 public:
   void registerActionInterface();
@@ -62,8 +69,7 @@ public:
 
   Filters::Common::Lua::CoroutinePtr createCoroutine();
 
-  bool doScriptStep(Step step, Envoy::Http::StreamFilterCallbacks* decoderCallback,
-                    Envoy::Http::StreamFilterCallbacks* encoderCallback, const std::string& name,
+  bool doScriptStep(Step step, RestyHandleWrapper* stream,const std::string& name,
                     Table& config, uint32_t& status);
 
   bool scriptDecodeHeaders(const std::string& name, Table& config);
@@ -74,23 +80,23 @@ public:
   void scriptLog(int level, const char*);
 
 public:
-  template <typename R> inline R Run(Envoy::Http::StreamFilterCallbacks*, const std::string&);
+  template <typename R> inline R Run(RestyHandleWrapper*, const std::string&);
   template <typename R, typename T1>
-  inline R Run(Envoy::Http::StreamFilterCallbacks*, const std::string&, const T1&);
+  inline R Run(RestyHandleWrapper*, const std::string&, const T1&);
   template <typename R, typename T1, typename T2>
-  inline R Run(Envoy::Http::StreamFilterCallbacks*, const std::string&, const T1&, const T2&);
+  inline R Run(RestyHandleWrapper*, const std::string&, const T1&, const T2&);
   template <typename R, typename T1, typename T2, typename T3>
-  inline R Run(Envoy::Http::StreamFilterCallbacks*, const std::string&, const T1&, const T2&,
+  inline R Run(RestyHandleWrapper*, const std::string&, const T1&, const T2&,
                const T3&);
   template <typename R, typename T1, typename T2, typename T3, typename T4>
-  inline R Run(Envoy::Http::StreamFilterCallbacks*, const std::string&, const T1&, const T2&,
+  inline R Run(RestyHandleWrapper*, const std::string&, const T1&, const T2&,
                const T3&, const T4&);
   template <typename R, typename T1, typename T2, typename T3, typename T4, typename T5>
-  inline R Run(Envoy::Http::StreamFilterCallbacks*, const std::string&, const T1&, const T2&,
+  inline R Run(RestyHandleWrapper*, const std::string&, const T1&, const T2&,
                const T3&, const T4&, const T5&);
 
 protected:
-  Envoy::Http::StreamFilterCallbacks* _stream;
+  RestyHandleWrapper* _stream;
 
 private:
   std::map<std::thread::id, ScriptAction*> _threadScriptActionMap GUARDED_BY(_sa_lock);

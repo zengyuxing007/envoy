@@ -1114,6 +1114,33 @@ template <typename T> void class_add(lua_State* L, const char* name) {
   lua_settable(L, LUA_GLOBALSINDEX);
 }
 
+template <typename T> void class_my_add(lua_State* L, const char* name) {
+//  class_name<T>::name(name);
+
+  lua_pushstring(L, name);
+  lua_newtable(L);
+
+  lua_pushstring(L, "__name");
+  lua_pushstring(L, name);
+  lua_rawset(L, -3);
+
+  lua_pushstring(L, "__index");
+  lua_pushcclosure(L, meta_get, 0);
+  lua_rawset(L, -3);
+
+  lua_pushstring(L, "__newindex");
+  lua_pushcclosure(L, meta_set, 0);
+  lua_rawset(L, -3);
+
+  lua_pushstring(L, "__gc");
+  lua_pushcclosure(L, destroyer<T>, 0);
+  lua_rawset(L, -3);
+
+  lua_settable(L, LUA_GLOBALSINDEX);
+}
+
+
+
 // Tinker Class Inheritence
 template <typename T, typename P> void class_inh(lua_State* L) {
   push_meta(L, class_name<T>::name());

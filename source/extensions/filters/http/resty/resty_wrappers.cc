@@ -51,7 +51,11 @@ RestyHandleWrapper::RestyHandleWrapper(Filters::Common::Lua::Coroutine& coroutin
         if (state_ == State::Running) {
           throw Filters::Common::Lua::LuaException("script performed an unexpected yield");
         }
-      }) {}
+      }) {
+
+          ENVOY_LOG(debug,"RestyHandleWrapper constructor -----------------------------------");
+
+}
 
 Http::FilterDataStatus RestyHandleWrapper::onData(Buffer::Instance& data, bool end_stream) {
   ASSERT(!end_stream_);
@@ -275,12 +279,16 @@ void RestyHandleWrapper::onFailure(Http::AsyncClient::FailureReason) {
 }
 
 int RestyHandleWrapper::luaHeaders(lua_State* state) {
+
+  ENVOY_LOG(debug,"state_ : {}",enumToInt<State>(state_));
+
   ASSERT(state_ == State::Running);
 
-  if (headers_wrapper_.get() != nullptr) {
-    headers_wrapper_.pushStack();
-  } else {
-    headers_wrapper_.reset(HeaderMapWrapper::create(state, headers_,
+  //if (headers_wrapper_.get() != nullptr) {
+   // headers_wrapper_.pushStack();
+  //} else {
+    ENVOY_LOG(debug,"luaHeaders --- reset ---");
+    headers_wrapper_.reset(HeaderMapWrapper::createUsingSpecifiedName("HeaderMapWrapper",state, headers_,
                                                     [this] {
                                                       // If we are about to do a modifiable header
                                                       // operation, blow away the route cache. We
@@ -296,7 +304,7 @@ int RestyHandleWrapper::luaHeaders(lua_State* state) {
                                                       return !headers_continued_;
                                                     }),
                            true);
-  }
+  //}
   return 1;
 }
 

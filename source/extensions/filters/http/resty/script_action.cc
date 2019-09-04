@@ -23,6 +23,12 @@ ScriptAction::~ScriptAction() {
   CLEAR_MAP_DATA(_threadScriptActionMap);
 }
 
+
+RestyHandleWrapper* ScriptAction::getHandle(){
+    ENVOY_LOG(debug,"getHandle --- stream addr:{}",static_cast<void*>(_stream));
+    return _stream;
+}
+
 bool ScriptAction::init(const std::string& path) {
   ENVOY_LOG(debug, "ScriptAction::init --");
   Script::init(path);
@@ -37,13 +43,7 @@ void ScriptAction::unInit() {
 
 void ScriptAction::registerActionInterface() {
 
-  CLASS_ADD(ScriptAction);
-  CLASS_DEF(ScriptAction, scriptLog);
-  CLASS_DEF(ScriptAction, directResponse);
-  CLASS_DEF(ScriptAction, direct200Response);
-  lua_tinker::set(_L, "_ScriptAction", this);
-
-  // CLASS_ADD(Http::LowerCaseString);
+    // CLASS_ADD(Http::LowerCaseString);
   // CLASS_ADD(Http::HeaderMap);
   // CLASS_DEF(Http::HeaderMap,byteSize);
   // CLASS_DEF(Http::HeaderMap,get);
@@ -70,6 +70,19 @@ void ScriptAction::registerActionInterface() {
   LUA_REGISTER_TYPE(DynamicMetadataMapIterator,_L);
   LUA_REGISTER_TYPE(PublicKeyWrapper,_L);
   LUA_REGISTER_TYPE(RestyHandleWrapper,_L);
+  //CLASS_MY_ADD(RestyHandleWrapper);
+  CLASS_DEF(RestyHandleWrapper,sayHello);
+
+  CLASS_ADD(ScriptAction);
+  CLASS_INH(ScriptAction,Script);
+  CLASS_DEF(ScriptAction, getLuaState);
+  CLASS_DEF(ScriptAction, getHandle);
+  CLASS_DEF(ScriptAction, scriptLog);
+  CLASS_DEF(ScriptAction, directResponse);
+  CLASS_DEF(ScriptAction, direct200Response);
+  lua_tinker::set(_L, "_ScriptAction", this);
+
+
 }
 
 void ScriptAction::createThreadScriptAction(int64_t threadId) {
@@ -150,11 +163,11 @@ bool ScriptAction::initPlugin(const std::string& name, Table& config) {
   return result;
 }
 
-bool ScriptAction::doScriptStep(Step step, Envoy::Http::StreamFilterCallbacks* decoderCallback,
-                                Envoy::Http::StreamFilterCallbacks* encoderCallback,
+bool ScriptAction::doScriptStep(Step step, RestyHandleWrapper* stream,
                                 const std::string& name, Table& config, uint32_t& status) {
 
-  ENVOY_LOG(debug, "do step {}: plugin {}", step, name);
+  ENVOY_LOG(debug, "do step {}: plugin {}, resty handle wrapper addr:{}", step, name,static_cast<void*>(stream));
+  ENVOY_LOG(debug, "--old stream addr:{}",static_cast<void*>(_stream));
   // 定义ScriptAction::Step
   //
   static char buffer[][64] = {"begin",
@@ -168,40 +181,29 @@ bool ScriptAction::doScriptStep(Step step, Envoy::Http::StreamFilterCallbacks* d
                               "encodeTrailers"};
   int i = step;
 
-  Envoy::Http::StreamFilterCallbacks* stream;
-  if (step < END_DECODE)
-    stream = decoderCallback;
-  else
-    stream = encoderCallback;
-
-  Envoy::Http::StreamFilterCallbacks* old_stream = _stream;
-
   bool result(false);
   try {
-    _stream = stream;
-    status = Run<uint32_t>(stream, buffer[i], name.c_str(), config);
+    status = Run<uint32_t>(stream, buffer[i], name.c_str(), config,stream);
     ENVOY_LOG(debug, "run script function: {}, return status:{}", buffer[i], status);
     result = true;
   } catch (const Filters::Common::Lua::LuaException& e) {
     ENVOY_LOG(error, "Plugin error: {}", e.what());
-    _stream = old_stream;
     return false;
   }
-  _stream = old_stream;
   return result;
 }
 
 bool ScriptAction::directResponse(Http::Code& error_code, const char* body) {
 
   Envoy::Http::StreamDecoderFilterCallbacks* stream =
-      dynamic_cast<Envoy::Http::StreamDecoderFilterCallbacks*>(_stream);
+      dynamic_cast<Envoy::Http::StreamDecoderFilterCallbacks*>(_stream->getCallback());
   stream->sendLocalReply(error_code, body, nullptr, absl::nullopt, "");
   return true;
 }
 
 bool ScriptAction::direct200Response(const char* body) {
   Envoy::Http::StreamDecoderFilterCallbacks* stream =
-      dynamic_cast<Envoy::Http::StreamDecoderFilterCallbacks*>(_stream);
+      dynamic_cast<Envoy::Http::StreamDecoderFilterCallbacks*>(_stream->getCallback());
   stream->sendLocalReply(Http::Code::OK, body, nullptr, absl::nullopt, "");
   return true;
 }

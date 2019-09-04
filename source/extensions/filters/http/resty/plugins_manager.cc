@@ -84,14 +84,13 @@ bool RestyPluginManager::doStep(StreamHandleRef& handle,Step step, uint32_t& ret
     return false;
   }
 
-
   int size = enable_plugin_list_.plugins_size();
   int i(0);
   for (; i < size; ++i) {
     auto p = enable_plugin_list_.plugins(i);
     auto p_config_table = pluginConfigToTable(sa, p);
     uint32_t intStatus(0);
-    if (!sa->doScriptStep(step, decoder_callbacks_, encoder_callbacks_, p.name(), *p_config_table,intStatus)) {
+    if (!sa->doScriptStep(step,handle.get(), p.name(), *p_config_table,intStatus)) {
       ENVOY_LOG(error, "doScriptStep excute error");
       return false;
     }
@@ -207,7 +206,12 @@ Http::FilterHeadersStatus RestyPluginManager::doDecodeHeaders(StreamHandleRef& h
   }
 
   Filters::Common::Lua::CoroutinePtr coroutine = sa->createCoroutine();
-  handle.reset(RestyHandleWrapper::create(coroutine->luaState(), *coroutine, headers, end_stream,this, decoder_callbacks_), false);
+  handle.reset(RestyHandleWrapper::createUsingSpecifiedName("RestyHandleWrapper",coroutine->luaState(), *coroutine, headers, end_stream,this, decoder_callbacks_), false);
+  //handle.reset(RestyHandleWrapper::create(coroutine->luaState(), *coroutine, headers, end_stream,this, decoder_callbacks_), true);
+  
+  RestyHandleWrapper* resty_handle_wrapper = handle.get();
+
+  ENVOY_LOG(debug,"resty_handle_wrapper addr: {}",static_cast<void*>(resty_handle_wrapper));
 
   if (!doStep(handle,Step::DO_DECODE_HEADER, intStatus)) {
     ENVOY_LOG(error, "doStep --- DO_DECODE_HEADER -- error: {}",

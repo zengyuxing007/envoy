@@ -215,6 +215,7 @@ static void call_stack(lua_State* L, int n) {
 /*---------------------------------------------------------------------------*/
 int lua_tinker::on_error(lua_State* L) {
   print_error(L, "%s", lua_tostring(L, -1));
+  //TODO
 
   call_stack(L, 0);
 

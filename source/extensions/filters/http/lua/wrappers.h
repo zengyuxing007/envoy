@@ -39,7 +39,9 @@ class HeaderMapWrapper : public Filters::Common::Lua::BaseLuaObject<HeaderMapWra
 public:
   using CheckModifiableCb = std::function<bool()>;
 
-  HeaderMapWrapper(Http::HeaderMap& headers, CheckModifiableCb cb) : headers_(headers), cb_(cb) {}
+  HeaderMapWrapper(Http::HeaderMap& headers, CheckModifiableCb cb) : headers_(headers), cb_(cb) {
+      ENVOY_LOG(debug,"HeaderMapWrapper constructor---zyx");
+  }
 
   static ExportedFunctions exportedFunctions() {
     return {{"add", static_luaAdd},

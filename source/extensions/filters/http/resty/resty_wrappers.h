@@ -87,6 +87,12 @@ public:
    * @return const Network::Connection* the current network connection handle.
    */
   virtual const Network::Connection* connection() const PURE;
+
+
+  /**
+   * @return callback
+   */
+  virtual Http::StreamFilterCallbacks* callback() PURE;
 };
 
 
@@ -109,6 +115,7 @@ struct DecoderCallbacks : public FilterCallbacks {
     StreamInfo::StreamInfo& streamInfo() override { return callbacks_->streamInfo(); }
     const Network::Connection* connection() const override { return callbacks_->connection(); }
 
+    Http::StreamFilterCallbacks* callback() override { return callbacks_; }
 
     operator Http::StreamDecoderFilterCallbacks* () {
         return callbacks_;
@@ -141,6 +148,8 @@ struct EncoderCallbacks : public FilterCallbacks {
     operator Http::StreamEncoderFilterCallbacks* () {
         return callbacks_;
     }
+
+    Http::StreamFilterCallbacks* callback() { return callbacks_; }
 
     Filter* parent_;
     Http::StreamEncoderFilterCallbacks* callbacks_{};
@@ -187,14 +196,17 @@ public:
   Envoy::Http::FilterDataStatus onData(Buffer::Instance& data, bool end_stream);
   Envoy::Http::FilterTrailersStatus onTrailers(Http::HeaderMap& trailers);
 
+  void sayHello() {
+      ENVOY_LOG(debug,"RestyHandleWrapper say hello");
+  }
+
   void onReset() {
     if (http_request_) {
       http_request_->cancel();
       http_request_ = nullptr;
     }
   }
-
-  static ExportedFunctions exportedFunctions() {
+   static ExportedFunctions exportedFunctions() {
     return {{"headers", static_luaHeaders},
             {"body", static_luaBody},
             {"bodyChunks", static_luaBodyChunks},
@@ -208,7 +220,17 @@ public:
             {"verifySignature", static_luaVerifySignature}};
   }
 
-private:
+
+
+
+  Envoy::Http::StreamFilterCallbacks* getCallback()
+  {
+      return callbacks_.callback();
+  }
+
+
+//private:
+public:
   /**
    * Perform an HTTP call to an upstream host.
    * @param 1 (string): The name of the upstream cluster to call. This cluster must be configured.
@@ -217,7 +239,7 @@ private:
    * @param 4 (int): Timeout in milliseconds for the call.
    * @return headers (table), body (string/nil)
    */
-  DECLARE_LUA_FUNCTION(RestyHandleWrapper, luaHttpCall);
+  DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(RestyHandleWrapper, luaHttpCall);
 
   /**
    * Perform an inline response. This call is currently only valid on the request path. Further
@@ -225,12 +247,12 @@ private:
    * @param 1 (table): A table of HTTP headers. :status must be defined.
    * @param 2 (string): Body. Can be nil.
    */
-  DECLARE_LUA_FUNCTION(RestyHandleWrapper, luaRespond);
+  DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(RestyHandleWrapper, luaRespond);
 
   /**
    * @return a handle to the headers.
    */
-  DECLARE_LUA_FUNCTION(RestyHandleWrapper, luaHeaders);
+  DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(RestyHandleWrapper, luaHeaders);
 
   /**
    * @return a handle to the full body or nil if there is no body. This call will cause the script
@@ -239,35 +261,35 @@ private:
    *         NOTE: This call causes Envoy to buffer the body. The max buffer size is configured
    *         based on the currently active flow control settings.
    */
-  DECLARE_LUA_FUNCTION(RestyHandleWrapper, luaBody);
+  DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(RestyHandleWrapper, luaBody);
 
   /**
    * @return an iterator that allows the script to iterate through all body chunks as they are
    *         received. The iterator will yield between body chunks. Envoy *will not* buffer
    *         the body chunks in this case, but the script can look at them as they go by.
    */
-  DECLARE_LUA_FUNCTION(RestyHandleWrapper, luaBodyChunks);
+  DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(RestyHandleWrapper, luaBodyChunks);
 
   /**
    * @return a handle to the trailers or nil if there are no trailers. This call will cause the
    *         script to yield if Envoy does not yet know if there are trailers or not.
    */
-  DECLARE_LUA_FUNCTION(RestyHandleWrapper, luaTrailers);
+  DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(RestyHandleWrapper, luaTrailers);
 
   /**
    * @return a handle to the metadata.
    */
-  DECLARE_LUA_FUNCTION(RestyHandleWrapper, luaMetadata);
+  DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(RestyHandleWrapper, luaMetadata);
 
   /**
    * @return a handle to the stream info.
    */
-  DECLARE_LUA_FUNCTION(RestyHandleWrapper, luaStreamInfo);
+  DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(RestyHandleWrapper, luaStreamInfo);
 
   /**
    * @return a handle to the network connection.
    */
-  DECLARE_LUA_FUNCTION(RestyHandleWrapper, luaConnection);
+  DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(RestyHandleWrapper, luaConnection);
 
   /**
    * Verify cryptographic signatures.
@@ -280,7 +302,7 @@ private:
    * @return (bool, string) If the first element is true, the second element is empty; otherwise,
    * the second element stores the error message
    */
-  DECLARE_LUA_FUNCTION(RestyHandleWrapper, luaVerifySignature);
+  DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(RestyHandleWrapper, luaVerifySignature);
 
   /**
    * Import public key.
@@ -288,7 +310,7 @@ private:
    * @param 2 (int)    length of keyder string
    * @return pointer to public key
    */
-  DECLARE_LUA_FUNCTION(RestyHandleWrapper, luaImportPublicKey);
+  DECLARE_LUA_FUNCTION_USING_DEFINED_NAME(RestyHandleWrapper, luaImportPublicKey);
 
   /**
    * This is the closure/iterator returned by luaBodyChunks() above.
@@ -310,10 +332,11 @@ private:
     public_key_wrapper_.reset();
   }
 
-  // Http::AsyncClient::Callbacks
+    // Http::AsyncClient::Callbacks
   void onSuccess(Http::MessagePtr&&) override;
   void onFailure(Http::AsyncClient::FailureReason) override;
 
+private:
   Filters::Common::Lua::Coroutine& coroutine_;
   Http::HeaderMap& headers_;
   bool end_stream_;

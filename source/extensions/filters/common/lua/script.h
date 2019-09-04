@@ -29,6 +29,11 @@ public:
     return table;
   }
 
+  lua_State* getLuaState()
+  {
+      return _L;
+  }
+
 public:
   template <typename T1> inline Table setRawTable(const T1&);
   template <typename T1> inline bool getRawTable(Table&, T1&);
@@ -76,6 +81,10 @@ protected:
 
 #define CLASS_DEF(klass, member) lua_tinker::class_def<klass>(_L, #member, &klass::member)
 #define CLASS_ADD(klass) lua_tinker::class_add<klass>(_L, #klass);
+#define CLASS_MY_ADD(klass) lua_tinker::class_my_add<klass>(_L, #klass);
+
+#define CLASS_INH(derived, base)   \
+    lua_tinker::class_inh<derived, base>(_L)
 
 #include "extensions/filters/common/lua/script.inl"
 
